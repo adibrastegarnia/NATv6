@@ -61,7 +61,7 @@ shellcmd xsh_sp(int nargs, char *args[])
 	/*	source		= Interface's MAC unicast address	*/
 
 	memset((char *)&pkt, 0, 1500);
-	strcpy((char *)&pkt.net_payload, " Please ignore this packet");
+	//strcpy((char *)&pkt.net_payload, " Please ignore this packet");
 	pkt.net_type = htons(0x0885);
 	memcpy(pkt.net_dst, if_tab[iface].if_macbcast, ETH_ADDR_LEN);
 	memcpy(pkt.net_src, if_tab[iface].if_macucast, ETH_ADDR_LEN);

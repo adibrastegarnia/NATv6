@@ -26,6 +26,9 @@ int32	ifprime;			/* Primary interface: for a	*/
 
 bpid32	netbufpool;			/* IP of network buffer pool	*/
 
+
+
+
 /*------------------------------------------------------------------------
  * net_init  -  Initialize network data structures and processes
  *------------------------------------------------------------------------
@@ -52,8 +55,7 @@ void	net_init (void)
 	/* Initialize the random port seed */
 
 	netportseed = getticks();
-
-
+	
 	/* Allocate the global buffer pool shared by all interfaces */
 
 	nbufs = NIFACES * IF_QUEUESIZE + 1;
@@ -204,9 +206,22 @@ void	net_init (void)
 			break;
 		}
 	}
+
 	if (tindex >= NMACADDRS) {
 		panic("net_init: no MAC address match\n");
 	}
+	
+	ifptr->if_nipucast = 0;
+	ifptr->if_nipmcast = 0;
+	/* Generate IPv6 link local address for interface 0 */
+
+	ip6llgen(ifptr);
+	ip6_snmaddrgen(0 , ifptr);
+	ip6_nwmcast_gen(0, ifptr);
+	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
+
+
+        control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
 	/* Othernet 1 */
 	
@@ -227,6 +242,13 @@ void	net_init (void)
 
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macucast, 0);
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macbcast, 0);
+	
+
+	/* Generate IPv6 link local address for interface 1 */
+	ip6llgen(ifptr);
+	ip6_snmaddrgen(0 , ifptr);
+	ip6_nwmcast_gen(0, ifptr);
+	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 
 
 	/* Othernet 2 */
@@ -249,6 +271,13 @@ void	net_init (void)
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macucast, 0);
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macbcast, 0);
 
+	/* Generate IPv6 link local address for interface 2 */
+	ip6llgen(ifptr);
+	ip6_snmaddrgen(0 , ifptr);
+	ip6_nwmcast_gen(0, ifptr);
+	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
+
+
 	if (host) {
 		printf("\nRunning host on %s\n", if_tab[ifprime].if_name);
 		if_tab[ifprime].if_state = IF_UP;
@@ -259,7 +288,6 @@ void	net_init (void)
 			ifptr->if_state = IF_UP;
 		}
 	}
-
 
 	/* Create a low-level input process that reads raw frames and	*/
 	/*	demultiplexes them to the correct interface		*/
@@ -322,6 +350,7 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
+			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);
 			continue;
 

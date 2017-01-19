@@ -11,6 +11,19 @@
 
 #define	OTH_ADDR_LEN	ETH_ADDR_LEN	/* Othernet address size	*/
 
+
+
+struct ifip6addr {
+	byte ip6addr[16];
+	uint32 preflen;
+
+};
+
+struct ifip6nmcast{
+	byte if_ip6nwmcast[6];
+};
+
+
 /* Format of an Ethernet or Othernet packet */
 
 #pragma pack(2)
@@ -18,12 +31,45 @@ struct	netpacket	{
 	byte	net_dst[ETH_ADDR_LEN];	/* Destination MAC address	*/
 	byte	net_src[ETH_ADDR_LEN];	/* Source MAC address		*/
 	uint16	net_type;		/* Layer 2 type field		*/
-	byte	net_payload[1500];	/* Packet payload		*/
-	int16	net_iface;		/* Interface over which the	*/
-					/*   packet arrived (placed	*/
-					/*   after the actual packet so	*/
-					/*   we can pass the packet	*/
-					/*   address directly to write	*/
+
+	union
+	{
+		byte   net_payload[1500];               /* Ethernet Payload */
+		struct {		
+			byte   net_ip6ver;              /* IPv6 version 		*/
+			byte   net_ip6tc;               /* IPv6 traffic class 		*/
+			uint16 net_ip6fll;               /* IPv6 flow label 		*/  
+			uint16 net_ip6len;              /* IPv6 payload length 		*/
+			byte   net_ip6nh;                /* IPv6 next header 		*/
+			byte   net_ip6hl;		/* IPv6 hop limit 		*/
+			byte   net_ip6src[16];		/* IPv6 source address 		*/
+			byte   net_ip6dst[16];		/* IPv6 destination address 	*/
+			union {
+				byte  net_ipdata[1500 - 40];
+
+				/* ICMPv6 data strucutre */ 
+				struct {
+					byte net_ictype; 		/* IPv6 ICMP type 		*/ 
+					byte net_iccode;		/* IPv6 ICMP code 		*/
+					uint16 net_icchksm;  		/* IPv6 ICMP check sum  	*/
+					byte   net_icdata[1500 - 58];  	/*  IPv6 ICMP payload   	*/
+				};
+
+				/* UDP data strucutre   */
+				struct {
+					uint16 net_udpsrcport;  	/* IPv6 UDP source port 	*/
+					uint16 net_udpdstport;  	/* IPv6 UDP destination port 	*/
+					uint16 net_udplen;    		/* IPv6 UDP length		*/ 		
+					uint16 net_udpchksm;     	/* IPv6 UDP checksum 		*/
+					byte   net_udpdata[1500-62];    /* IPv6 UDP payload 		*/
+				};
+			};
+		};
+	};
+
+        int16	net_iface;		/* Interface over which the	*/
+	
+
 };
 #pragma pack()
 
@@ -48,6 +94,9 @@ extern	bpid32	netbufpool;		/* ID of net packet buffer pool	*/
 
 #define	IF_NLEN		32	/* Max characters in an interface name	*/
 
+#define IF_MAX_NUCAST   5       /* Max number of unicast addresses for IPv6   */ 
+#define IF_MAC_NMCAST   5       /* Max number of multicast addresses for IPv6 */
+
 /* Network interface structure */
 
 struct	ifentry	{
@@ -59,12 +108,20 @@ struct	ifentry	{
 	byte	if_macbcast[ETH_ADDR_LEN]; /* MAC broadcast address	*/
 	sid32	if_sem;		/* semaphore counts incoming packets	*/
 				/*    in the queue			*/
+
 	struct	netpacket *if_queue[IF_QUEUESIZE]; /* queue to hold	*/
 				/*  incoming packets for this interface	*/
 	int32	if_head;	/* next entry in packet queue to remove	*/
 	int32	if_tail;	/* next slot in packet queue to insert	*/
 
 	/* *** NOTE ADDITIONAL IPv4/IPv6/ARP/ND fields go here *** */
+	struct ifip6addr if_ip6ucast[IF_MAX_NUCAST];   /* IPv6 unicast address 	 */
+	struct ifip6addr if_ip6mcast[IF_MAC_NMCAST];   /* IPv6 multicast address */
+	struct ifip6nmcast if_ip6newmcast[IF_MAX_NUCAST];
+
+	int32 if_nipmcast;
+	int32 if_nipucast;
+	
 };
 
 extern	struct	ifentry	if_tab[];

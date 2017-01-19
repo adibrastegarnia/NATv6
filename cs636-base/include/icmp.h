@@ -1,5 +1,23 @@
 /* icmp.h - definintions for the Internet Control Message Protocol */
 
+
+/* ICMPv6 message types */
+
+#define ICMP6_ECHREQ_TYPE 128   /* Echo Request 	          */
+#define ICMP6_ECHRES_TYPE 129   /* Echo Response 		  */
+#define ICMP6_RSM_TYPE   133    /* Router Solicitation Message 	  */
+#define ICMP6_RAM_TYPE   134    /* Router Advertisement Message   */
+#define ICMP6_NSM_TYPE   135    /* Neighbor Solicitation Message  */ 
+#define ICMP6_NAM_TYPE   136    /* Neighbor Advertisement Message */
+#define ICMP6_RDM_TYPE   137    /* Redirect Message 		  */
+
+
+
+
+
+
+
+
 #define	ICMP_SLOTS	10		/* num. of open ICMP endpoints	*/
 #define	ICMP_QSIZ	8		/* incoming packets per slot	*/
 

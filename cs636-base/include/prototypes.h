@@ -125,6 +125,13 @@ extern	status	getutime(uint32 *);
 /* in file halt.S */
 extern	void	halt(void);
 
+/* in file icmp.c*/
+extern void icmp_init(void);
+extern void icmp6_in(struct netpacket *);
+extern struct netpacket *icmp_mkpkt(byte[], byte, byte, void *, int32, int32);
+extern status icmp6_send(byte[], byte, byte, void *, int32, int32);
+extern uint16 icmp6_chksum(struct netpacket *);
+
 /* in file init.c */
 extern	syscall	init(did32);
 
@@ -149,6 +156,18 @@ extern	devcall	ioerr(void);
 
 /* in file ionull.c */
 extern	devcall	ionull(void);
+
+/* in file ip.c     */
+extern status ip6_send(struct netpacket *);
+extern void   ip6_ntoh(struct netpacket *);
+extern void   ip6_in(struct netpacket *);
+extern void   ip6_in_ext(struct netpacket *);
+extern void   ip6addr_print(byte *);
+extern void   ip6llgen(struct ifentry *);
+extern status ip6_snmaddrgen(int32, struct ifentry *);
+extern status ip6_nwmcast_gen(int32, struct ifentry *);
+extern status ip6addr_reso(struct netpacket *);
+
 
 /* in file net.c */
 extern	void	net_init(void);
@@ -281,6 +300,15 @@ extern	devcall	namopen(struct dentry *, char *, char *);
 
 /* in file newqueue.c */
 extern	qid16	newqueue(void);
+
+/* in file nd.c */
+extern void nd_init(void);
+extern void nd_in_nsm(struct netpacket *);
+extern void nd_in_nam(struct netpacket *);
+extern void nd_in(struct netpacket *);
+extern int32 nd_ncupdate(byte *, byte *, int32, bool8);
+extern int32  nd_ncfindip(byte *);
+extern int32 nd_ncnew(byte *, byte *hwaddr, int32, int32, int32);
 
 /* in file open.c */
 extern	syscall	open(did32, char *, char *);
