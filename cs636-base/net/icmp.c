@@ -97,6 +97,7 @@ struct netpacket *icmp_mkpkt(byte remip[],
 
 	//pkt->net_type = 0x800;       /* Ether type is IP */
 
+	memset(pkt, 0 , sizeof(struct netpacket));
 
 	pkt->net_iface = iface; 
 	pkt->net_ip6ver = 0x60;     /* IPv6 		*/ 
@@ -144,7 +145,6 @@ status icmp6_send(byte remip[],
 
 	/* Send ICMPv6 packet */
 	retval = ip6_send(pkt);
-
 	restore(mask);
 
 	return retval;
@@ -163,7 +163,7 @@ uint16 icmp6_chksum(struct netpacket *pktptr)
 	int i = 0;
 	uint16 *ptr16;
 	struct pseudo pseudo_hdr;
-	memset(&pseudo_hdr, 0, sizeof(struct pseudo));
+	memset(&pseudo_hdr, 0, sizeof(pseudo_hdr));
 	memcpy(pseudo_hdr.ip6_src, pktptr->net_ip6src, 16);
 	memcpy(pseudo_hdr.ip6_dst, pktptr->net_ip6dst, 16);
 	pseudo_hdr.pktlen = htonl(pktptr->net_ip6len);
@@ -185,6 +185,7 @@ uint16 icmp6_chksum(struct netpacket *pktptr)
 	}
 
 	checksum = (uint16)checksum + (checksum >> 16);
+	kprintf("chksum %d:%d\n", (uint16)(checksum), (uint16)(~checksum));
 	return (uint16)~checksum;
 
 

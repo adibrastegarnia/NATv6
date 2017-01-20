@@ -191,6 +191,33 @@ int32 nd_ncnew(byte *ip6addr,
 
 }
 
+/*-------------------------------------------------
+ * nd_send_ns: Send a neighbor solication message 
+ * --------------------------------------------------*/
+status nd_send_ns(byte ipdst[16])
+{
+	struct nd_nbrsol *nbsptr;
+	struct nd_opt *nboptptr; 
+
+	
+	int32 nslen = sizeof(struct nd_nbrsol) + sizeof(struct nd_opt);
+	nbsptr = (struct nd_nbrsol *)getmem(nslen);
+	memset(nbsptr, 0 , nslen);
+	nboptptr = (struct nd_opt *)nbsptr->nd_opts;
+	nboptptr->nd_type = ND_OPT_SLLA ;
+	nboptptr->nd_len = sizeof(struct nd_opt);
+	memcpy(nboptptr->nd_lladr, if_tab[0].if_macucast, ETH_ADDR_LEN);
+
+	memcpy(nbsptr->nd_trgtaddr, ipdst, 16);
+
+	icmp6_send(ipdst, ICMP6_NSM_TYPE , 0, nbsptr, nslen, 0);
+	
+
+	return OK;
+
+}
+
+
 
 
 /*-------------------------------------------------------------
@@ -303,9 +330,9 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	}
 	/* Sending Solicited Neighbor Advertisements */
-        int32 nbadvrlen = sizeof(struct nd_nbadvr) + sizeof(struct nd_opt);
+        int32 nbadvrlen = sizeof(struct nd_nbadvr) + 8;
 
-	///kprintf("nbadvrlen %d:%d\n", nbadvrlen, sizeof(struct nd_opt));
+	kprintf("nbadvrlen %d:%d\n", nbadvrlen, sizeof(uint32));
 	nbadvrptr = (struct nd_nbadvr *)getmem(nbadvrlen);
 	if((int32)nbadvrptr == SYSERR)
 	{
@@ -315,13 +342,16 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	}
 	memcpy(nbadvrptr->nd_trgtaddr, nbsolptr->nd_trgtaddr, 16);
+
+	ip6addr_print(nbadvrptr->nd_trgtaddr);
 	nbadvrptr->nd_r = 0;
 	nbadvrptr->nd_s = 1;
 	nbadvrptr->nd_o = 1;
+	memcpy(nbadvrptr->nd_reserved, 0x000, 3);
 
 	nboptptr = (struct nd_opt *)nbadvrptr->nd_opts;
 	nboptptr->nd_type = ND_OPT_TLLA;
-	nboptptr->nd_len = sizeof(struct nd_opt);
+	nboptptr->nd_len = 1;
 	memcpy(nboptptr->nd_lladr, if_tab[pktptr->net_iface].if_macucast, ETH_ADDR_LEN);
 
 

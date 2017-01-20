@@ -309,7 +309,7 @@ extern void nd_in(struct netpacket *);
 extern int32 nd_ncupdate(byte *, byte *, int32, bool8);
 extern int32  nd_ncfindip(byte *);
 extern int32 nd_ncnew(byte *, byte *hwaddr, int32, int32, int32);
-
+extern status nd_send_ns(byte[]);
 /* in file open.c */
 extern	syscall	open(did32, char *, char *);
 

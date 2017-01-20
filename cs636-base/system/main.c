@@ -13,12 +13,13 @@ process	main(void)
 
 	/* Wait for shell to exit and recreate it */
 
-	while (TRUE) {
+	/*while (TRUE) {
 		receive();
 		sleepms(200);
 		kprintf("\n\nMain process recreating shell\n\n");
 		resume(create(shell, 4096, 20, "shell", 1, CONSOLE));
-	}
+	}*/
+
 	return OK;
     
 }

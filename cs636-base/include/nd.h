@@ -70,7 +70,7 @@ struct nd_nbadvr{
 	byte   nd_r:1;
 	byte   nd_s:1;
 	byte   nd_o:1;
-	uint32 nd_reserved;
+	byte nd_reserved[3];
 	byte   nd_trgtaddr[16];
 	byte   nd_opts[];
 };

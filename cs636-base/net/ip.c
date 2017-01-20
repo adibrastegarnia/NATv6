@@ -253,9 +253,21 @@ status ip6_send(struct netpacket *pktptr)
 	mask = disable();
 	int32 retval;
 	uint32 iplen;
+	uint16 chksm;
 	struct ifentry  *ifptr; 
 	struct nd_nbcentry *nbcptr;
 
+
+	switch(pktptr->net_ip6nh)
+	{
+
+		case IP_ICMP6:
+			chksm = icmp6_chksum(pktptr);
+			pktptr->net_icchksm = htons(chksm);
+			break;
+
+
+	}
 	retval = ip6addr_reso(pktptr);
 	nbcptr = &nbcache_tab[retval];
 
@@ -275,16 +287,18 @@ status ip6_send(struct netpacket *pktptr)
         pktptr->net_type = htons(ETH_IPv6);
 
 
-	int i;
+	/*int i;
 	for(i= 0; i< 6;i++)
 	{
 		kprintf("%02x:", ifptr->if_macucast[i]);
 	}
 	kprintf("\n");
-	
+	*/
 	ip6_hton(pktptr);
-	iplen =  ntohs(pktptr->net_ip6len);
-	kprintf("ip len %d:\n", 14 + iplen);
+        
+	iplen =  40 + ntohs(pktptr->net_ip6len);
+	//kprintf("ip len %d:\n", 14 + iplen);
+
 	retval = write(ETHER0, (char *)pktptr, 14 + iplen);
 	
 	freebuf((char *)pktptr);
