@@ -155,14 +155,12 @@ int32 nd_ncnew(byte *ip6addr,
 	}
 	if(i >= ND_NCACHE_SIZE)
 	{
-		kprintf("NC is full\n");
+		kprintf("Neighbor Cache is full\n");
 		return SYSERR;
 
 	}
 
 	memset(nbcptr, 0 ,sizeof(struct nd_nbcentry));
-
-
 
 	nbcptr->nc_iface = iface;
 	nbcptr->nc_reachstate = rstate;
@@ -190,33 +188,6 @@ int32 nd_ncnew(byte *ip6addr,
 	return i;
 
 }
-
-/*-------------------------------------------------
- * nd_send_ns: Send a neighbor solication message 
- * --------------------------------------------------*/
-status nd_send_ns(byte ipdst[16])
-{
-	struct nd_nbrsol *nbsptr;
-	struct nd_opt *nboptptr; 
-
-	
-	int32 nslen = sizeof(struct nd_nbrsol) + sizeof(struct nd_opt);
-	nbsptr = (struct nd_nbrsol *)getmem(nslen);
-	memset(nbsptr, 0 , nslen);
-	nboptptr = (struct nd_opt *)nbsptr->nd_opts;
-	nboptptr->nd_type = ND_OPT_SLLA ;
-	nboptptr->nd_len = sizeof(struct nd_opt);
-	memcpy(nboptptr->nd_lladr, if_tab[0].if_macucast, ETH_ADDR_LEN);
-
-	memcpy(nbsptr->nd_trgtaddr, ipdst, 16);
-
-	icmp6_send(ipdst, ICMP6_NSM_TYPE , 0, nbsptr, nslen, 0);
-	
-
-	return OK;
-
-}
-
 
 
 
@@ -294,7 +265,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	/* Extract Option from NB solicitation message */
 	nboptptr = (struct nd_opt *)nbsolptr->nd_opts;
-	kprintf("In ND_IN_NS:%d\n", nboptptr->nd_type);
+	//kprintf("In ND_IN_NS:%d\n", nboptptr->nd_type);
 
 	switch(nboptptr->nd_type)
 	{
@@ -332,7 +303,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 	/* Sending Solicited Neighbor Advertisements */
         int32 nbadvrlen = sizeof(struct nd_nbadvr) + 8;
 
-	kprintf("nbadvrlen %d:%d\n", nbadvrlen, sizeof(uint32));
+
 	nbadvrptr = (struct nd_nbadvr *)getmem(nbadvrlen);
 	if((int32)nbadvrptr == SYSERR)
 	{
@@ -379,12 +350,23 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 }
 
+
+status nd_ns_send(int32 ncindex)
+{
+
+
+}
+
 /*---------------------------------------------------------------
  * nd_in_nam: Handling Neighbour Advertisement incoming messages 
  * -------------------------------------------------------------*/
 
 void nd_in_nam(struct netpacket *pktptr)
 {
+	struct nd_nbadvr *nbadvptr;
+
+	
+	
 
 
 }

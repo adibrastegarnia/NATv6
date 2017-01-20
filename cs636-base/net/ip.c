@@ -215,7 +215,9 @@ void ip6_in_ext(struct netpacket *pktptr)
 	return;
 }
 
-
+/* ------------------------------------------
+ * ip6addr_reso:IPv6 address resolution 
+ * -----------------------------------------*/
 status ip6addr_reso(struct netpacket *pktptr)
 {
 
@@ -223,6 +225,13 @@ status ip6addr_reso(struct netpacket *pktptr)
 	int32 i;
 	memcpy(ipdst, pktptr->net_ip6dst, 16);
 
+	if(isipmc(ipdst))
+	{
+
+		kprintf("Address Resoultion can not be performed on Multicast Adddress");
+		return SYSERR;
+
+	}
 	struct nd_nbcentry *nbcptr;
 	//ip6addr_print(ipdst);
 	for(i=0; i < ND_NCACHE_SIZE;i++)
@@ -269,16 +278,17 @@ status ip6_send(struct netpacket *pktptr)
 
 	}
 	retval = ip6addr_reso(pktptr);
-	nbcptr = &nbcache_tab[retval];
-
-	if(retval == SYSERR)
-	{
+         if(retval == SYSERR)
+	 {
 		/* NB discovery should be done */
 		kprintf("Address Resolution is failed\n");
 		restore(mask);
 		return SYSERR;
 
 	}
+	nbcptr = &nbcache_tab[retval];
+
+	
 	
 	ifptr = &if_tab[pktptr->net_iface];
 	

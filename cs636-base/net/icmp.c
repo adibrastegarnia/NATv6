@@ -47,11 +47,11 @@ void icmp6_in(struct netpacket *pktptr)
 		/* ICMP Echo request */
 		case ICMP6_ECHREQ_TYPE:
 			kprintf("ICMP Echo request\n");
-			/*icmp6_send(pktptr->net_ip6src, 
+			icmp6_send(pktptr->net_ip6src, 
 					ICMP6_ECHRES_TYPE, 0,
 					pktptr->net_icdata,
 					pktptr->net_ip6len - 4, 
-					pktptr->net_iface);*/
+					pktptr->net_iface);
 			break;
 
 		/* ICMP Router Advertisement Message */
@@ -88,21 +88,25 @@ struct netpacket *icmp_mkpkt(byte remip[],
 		int32 datalen, 
 		int32 iface){
 
+	
 	struct netpacket *pkt;
+
+	/* Allocate buffer from netbufpool */
 	pkt = (struct netpacket *)getbuf(netbufpool);
 
 	if ((int32)pkt == SYSERR) {
 		panic("icmp_mkpkt: cannot get a network buffer\n");
 	}
-
-	//pkt->net_type = 0x800;       /* Ether type is IP */
-
+	
+	
+	/* Initialize packet to zeros 		*/
 	memset(pkt, 0 , sizeof(struct netpacket));
+
 
 	pkt->net_iface = iface; 
 	pkt->net_ip6ver = 0x60;     /* IPv6 		*/ 
-	pkt->net_ip6nh = IP_ICMP6;
-	pkt->net_ip6hl = 255;
+	pkt->net_ip6nh = IP_ICMP6;  /* ICMPv6 Packet    */
+	pkt->net_ip6hl = 255;       
 	pkt->net_ip6len = 4 + datalen;
 	memcpy(pkt->net_ip6dst, remip, 16);
 
@@ -185,7 +189,7 @@ uint16 icmp6_chksum(struct netpacket *pktptr)
 	}
 
 	checksum = (uint16)checksum + (checksum >> 16);
-	kprintf("chksum %d:%d\n", (uint16)(checksum), (uint16)(~checksum));
+	//kprintf("chksum %d:%d\n", (uint16)(checksum), (uint16)(~checksum));
 	return (uint16)~checksum;
 
 
