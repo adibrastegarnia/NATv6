@@ -51,6 +51,38 @@ void nd_init(void)
 	restore(mask);
 	return;
 }
+/* ----------------------------------------------------
+ * nd_ncq_insert:insert a packet into the NC queue 
+ * -------------------------------------------------*/
+void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
+{
+	struct nd_nbcentry *nbcptr;
+	nbcptr = &nbcache_tab[ncindex];
+	if(nbcptr->nc_pqcount < NC_PKTQ_SIZE)
+	{
+		nbcptr->nc_pktq[nbcptr->nc_pqtail++] = pktptr;
+		if(nbcptr->nc_pqtail >= NC_PKTQ_SIZE)
+		{
+			nbcptr->nc_pqtail = 0;
+
+
+		}
+		nbcptr->nc_pqcount++;
+		
+	}
+	else if(nbcptr->nc_pqcount == NC_PKTQ_SIZE)
+	{
+		freebuf((char *)nbcptr->nc_pktq[nbcptr->nc_pqtail]);
+        	nbcptr->nc_pktq[nbcptr->nc_pqtail] = pktptr;
+
+
+	}
+
+	return;
+
+}
+
+
 
 /* --------------------------------------------------
  * nd_ncfindip: Find an entry in the Neighbor cache
@@ -114,6 +146,7 @@ int32 nd_ncupdate(byte *ip6addr,
 		memcpy(nbcptr->nc_hwaddr, hwaddr, ETH_ADDR_LEN);
 		nbcptr->nc_reachstate = NB_REACH_STA; 
 
+	
 	}
 
 
@@ -354,6 +387,50 @@ void nd_in_nsm(struct netpacket *pktptr)
 status nd_ns_send(int32 ncindex)
 {
 
+	struct nd_nbrsol *nbsptr;
+	struct nd_nbcentry *nbcptr;
+	struct nd_opt *ndoptptr;
+
+	byte ipdst[16];
+
+	int32 nslen = sizeof(struct nd_nbrsol) + 8;
+	nbcptr = &nbcache_tab[ncindex];
+
+	nbsptr = (struct nd_nbrsol *)getmem(nslen);
+	memset(nbsptr, 0, nslen);
+
+	ndoptptr = (struct nd_opt *)nbsptr->nd_opts;
+
+	memcpy(nbsptr->nd_trgtaddr, nbcptr->nc_nbipucast, 16);
+
+	ndoptptr->nd_type = ND_OPT_SLLA ;
+	ndoptptr->nd_len = 1;
+
+	memcpy(ndoptptr->nd_lladr, if_tab[nbcptr->nc_iface].if_macucast, ETH_ADDR_LEN);
+
+	if(nbcptr->nc_reachstate == NB_REACH_INC)
+	{
+		memcpy(ipdst, ip6_nd_snmpref, 16);
+		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
+
+
+	}
+	else
+	{
+		memcpy(ipdst, nbcptr->nc_nbipucast, 16);
+
+	}
+
+       icmp6_send(ipdst, ICMP6_NSM_TYPE, 
+			0 , nbsptr,
+			nslen, 
+			nbcptr->nc_iface);
+
+       freemem((char *)nbsptr, nslen);
+
+       return OK;
+
+
 
 }
 
@@ -364,6 +441,80 @@ status nd_ns_send(int32 ncindex)
 void nd_in_nam(struct netpacket *pktptr)
 {
 	struct nd_nbadvr *nbadvptr;
+	struct nd_nbcentry *nbcptr;
+        struct nd_opt    *nboptptr;
+
+	status retval;
+	nbadvptr = (struct nd_nbadvr *)pktptr->net_icdata;
+
+        nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
+
+
+	/* the Neighbor Cache is searched for the target's entry */
+	retval = nd_ncfindip(pktptr->net_ip6src);
+	if(retval == SYSERR)
+	{
+		return;
+	}
+
+	nbcptr = &nbcache_tab[retval];
+	int32 rstate = nbcptr->nc_reachstate;
+
+	switch(rstate)
+	{
+
+		case NB_REACH_INC:
+			kprintf("INCOMPLETE STATE\n");
+			switch(nboptptr->nd_type)
+			{
+				case ND_OPT_TLLA:
+					/* the advertisement's Solicited flag is set, the state of the
+					 * entry is set to REACHABLE
+					 *  sets the IsRouter flag in the cache entry based on the Router
+					 *  flag*/
+					if(nbadvptr->nd_s == 1 && nbadvptr->nd_r == 0)
+					{
+						memcpy(nbcptr->nc_hwaddr, nboptptr->nd_lladr, ETH_ADDR_LEN);
+						nbcptr->nc_reachstate = NB_REACH_REA; 
+						nbcptr->nc_isrouter = FALSE;
+
+					}
+					else if(nbadvptr->nd_s == 1 && nbadvptr->nd_r == 1)
+					{
+						memcpy(nbcptr->nc_hwaddr, nboptptr->nd_lladr, ETH_ADDR_LEN);
+						nbcptr->nc_reachstate = NB_REACH_REA; 
+						nbcptr->nc_isrouter = TRUE;
+
+
+					}
+					else if(nbadvptr->nd_s == 0 && nbadvptr->nd_r == 0)
+					{
+
+						nd_ncupdate(pktptr->net_ip6src, 
+						nboptptr->nd_lladr, 
+						FALSE, 0);
+					
+					}
+					else if(nbadvptr->nd_s == 0 && nbadvptr->nd_r == 1)
+					{
+
+						nd_ncupdate(pktptr->net_ip6src, 
+						nboptptr->nd_lladr, 
+						TRUE, 1);
+
+					}
+					/* sends any packets queued for the neighbor awaiting address resolution */
+
+					break;
+				default:
+					return;
+			}
+
+	}
+	
+
+
+
 
 	
 	

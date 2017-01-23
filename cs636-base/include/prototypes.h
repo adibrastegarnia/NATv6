@@ -160,6 +160,7 @@ extern	devcall	ionull(void);
 /* in file ip.c     */
 extern status ip6_send(struct netpacket *);
 extern void   ip6_ntoh(struct netpacket *);
+extern void   ip6_hton(struct netpacket *);
 extern void   ip6_in(struct netpacket *);
 extern void   ip6_in_ext(struct netpacket *);
 extern void   ip6addr_print(byte *);
@@ -309,7 +310,8 @@ extern void nd_in(struct netpacket *);
 extern int32 nd_ncupdate(byte *, byte *, int32, bool8);
 extern int32  nd_ncfindip(byte *);
 extern int32 nd_ncnew(byte *, byte *hwaddr, int32, int32, int32);
-extern status nd_send_ns(int32);
+extern status nd_ns_send(int32);
+extern void   nd_ncq_insert(struct netpacket *, int32);
 /* in file open.c */
 extern	syscall	open(did32, char *, char *);
 

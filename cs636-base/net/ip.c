@@ -215,9 +215,9 @@ void ip6_in_ext(struct netpacket *pktptr)
 	return;
 }
 
-/* ------------------------------------------
- * ip6addr_reso:IPv6 address resolution 
- * -----------------------------------------*/
+/* ----------------------------------------------------------
+ * ip6addr_reso:  Resolve an IPv6 address to a Link layer address 
+ * ---------------------------------------------------------*/
 status ip6addr_reso(struct netpacket *pktptr)
 {
 
@@ -233,7 +233,6 @@ status ip6addr_reso(struct netpacket *pktptr)
 
 	}
 	struct nd_nbcentry *nbcptr;
-	//ip6addr_print(ipdst);
 	for(i=0; i < ND_NCACHE_SIZE;i++)
 	{
 		nbcptr = &nbcache_tab[i];
@@ -265,11 +264,12 @@ status ip6_send(struct netpacket *pktptr)
 	uint16 chksm;
 	struct ifentry  *ifptr; 
 	struct nd_nbcentry *nbcptr;
-
+	int32 ncindex;
 
 	switch(pktptr->net_ip6nh)
 	{
 
+		/* Handling ICMPv6 Packets */
 		case IP_ICMP6:
 			chksm = icmp6_chksum(pktptr);
 			pktptr->net_icchksm = htons(chksm);
@@ -277,40 +277,39 @@ status ip6_send(struct netpacket *pktptr)
 
 
 	}
+	/* Resolve an IPv6 Address to a Layer 2 address */
 	retval = ip6addr_reso(pktptr);
-         if(retval == SYSERR)
-	 {
+        if(retval == SYSERR)
+	{
 		/* NB discovery should be done */
 		kprintf("Address Resolution is failed\n");
+		/* Create an entry in the neighbor Cache */
+		ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
+				pktptr->net_iface, NB_REACH_INC, 0);
+
+		/* insert packet into the queue */
+		nd_ncq_insert(pktptr, ncindex);
+
+		/* Sending neighbor solicitation message */
+		nd_ns_send(ncindex);
+	
+
 		restore(mask);
 		return SYSERR;
 
 	}
-	nbcptr = &nbcache_tab[retval];
-
-	
-	
-	ifptr = &if_tab[pktptr->net_iface];
-	
-	memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
-	memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
-        pktptr->net_type = htons(ETH_IPv6);
-
-
-	/*int i;
-	for(i= 0; i< 6;i++)
+	else
 	{
-		kprintf("%02x:", ifptr->if_macucast[i]);
-	}
-	kprintf("\n");
-	*/
-	ip6_hton(pktptr);
-        
-	iplen =  40 + ntohs(pktptr->net_ip6len);
-	//kprintf("ip len %d:\n", 14 + iplen);
+		nbcptr = &nbcache_tab[retval];
+		ifptr = &if_tab[pktptr->net_iface];
+		memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
+		memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+		pktptr->net_type = htons(ETH_IPv6);
+		ip6_hton(pktptr);
+		iplen =  40 + ntohs(pktptr->net_ip6len);
+		retval = write(ETHER0, (char *)pktptr, 14 + iplen);
 
-	retval = write(ETHER0, (char *)pktptr, 14 + iplen);
-	
+	}
 	freebuf((char *)pktptr);
 	restore(mask);
 	return retval;
