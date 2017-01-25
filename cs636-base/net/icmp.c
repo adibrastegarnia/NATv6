@@ -46,7 +46,7 @@ void icmp6_in(struct netpacket *pktptr)
 		
 		/* ICMP Echo request */
 		case ICMP6_ECHREQ_TYPE:
-			kprintf("ICMP Echo request\n");
+			//kprintf("ICMP Echo request\n");
 			icmp6_send(pktptr->net_ip6src, 
 					ICMP6_ECHRES_TYPE, 0,
 					pktptr->net_icdata,
@@ -55,6 +55,9 @@ void icmp6_in(struct netpacket *pktptr)
 			break;
 
 		/* ICMP Router Advertisement Message */
+		case ICMP6_ECHRES_TYPE:
+			kprintf("Got reply\n");
+			break;
 		case ICMP6_RAM_TYPE:
 			kprintf("ICMP6 Router Advertisemet message\n");
 			break;
@@ -65,14 +68,14 @@ void icmp6_in(struct netpacket *pktptr)
 
 		/* ICMP Neighbour Soliciation Message */
 		case ICMP6_NSM_TYPE:
-			kprintf("ICMP6 Neighbor Solicitation message\n");
+			//kprintf("ICMP6 Neighbor Solicitation message\n");
 			nd_in(pktptr);
 			break;
 
 		/* ICMP Neighbour Advertisment Message */
 		case ICMP6_NAM_TYPE:
 			nd_in(pktptr);
-			kprintf("ICMP6 neighbor Advertisment message\n");
+			//kprintf("ICMP6 neighbor Advertisment message\n");
 			break;
 
 	}
@@ -89,6 +92,7 @@ struct netpacket *icmp_mkpkt(byte remip[],
 		int32 iface){
 
 	
+	struct ifentry   *ifptr;
 	struct netpacket *pkt;
 
 	/* Allocate buffer from netbufpool */
@@ -109,6 +113,9 @@ struct netpacket *icmp_mkpkt(byte remip[],
 	pkt->net_ip6hl = 255;       
 	pkt->net_ip6len = 4 + datalen;
 	memcpy(pkt->net_ip6dst, remip, 16);
+
+        ifptr = &if_tab[iface];
+	memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
 
 	pkt->net_ictype = ictype;
 	pkt->net_iccode = iccode;

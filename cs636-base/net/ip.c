@@ -184,11 +184,12 @@ void ip6_in_ext(struct netpacket *pktptr)
 
 	/* Get Next header value */
 	nh_value = pktptr->net_ip6nh;
+
 	//exptr = (struct ip6_ext_hdr *)pktptr->net_ipdata;
 
 	while(nh_value != IP6_EXT_NOHDR)
 	{
-               	kprintf("Next header value %d\n", nh_value);
+               	//kprintf("Next header value %d\n", nh_value);
 
 		switch(nh_value)
 		{
@@ -221,16 +222,16 @@ void ip6_in_ext(struct netpacket *pktptr)
 status ip6addr_reso(struct netpacket *pktptr)
 {
 
-	byte *ipdst[16];
+	byte ipdst[16];
 	int32 i;
 	memcpy(ipdst, pktptr->net_ip6dst, 16);
-
+        
+	//ip6addr_print(pktptr->net_ip6dst);
 	if(isipmc(ipdst))
 	{
 
-		kprintf("Address Resoultion can not be performed on Multicast Adddress");
-		return SYSERR;
-
+		//kprintf("Address Resoultion can not be performed on Multicast Adddress");
+		return -2;
 	}
 	struct nd_nbcentry *nbcptr;
 	for(i=0; i < ND_NCACHE_SIZE;i++)
@@ -282,7 +283,7 @@ status ip6_send(struct netpacket *pktptr)
         if(retval == SYSERR)
 	{
 		/* NB discovery should be done */
-		kprintf("Address Resolution is failed\n");
+		//kprintf("\nAddress Resolution is failed\n");
 		/* Create an entry in the neighbor Cache */
 		ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
 				pktptr->net_iface, NB_REACH_INC, 0);
@@ -301,9 +302,25 @@ status ip6_send(struct netpacket *pktptr)
 	else
 	{
 		nbcptr = &nbcache_tab[retval];
+
 		ifptr = &if_tab[pktptr->net_iface];
 		memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
-		memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+
+		if(!isipmc(pktptr->net_ip6dst))
+		{
+			memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+		
+		}
+		else
+		{
+			//kprintf("Multicast\n");
+			pktptr->net_dst[0] = 0x33;
+			pktptr->net_dst[1] = 0x33;
+			memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
+
+		}
+
+
 		pktptr->net_type = htons(ETH_IPv6);
 		ip6_hton(pktptr);
 		iplen =  40 + ntohs(pktptr->net_ip6len);

@@ -78,3 +78,7 @@ extern	shellcmd  xsh_uptime	(int32, char *[]);
 
 /* in file xsh_help.c */
 extern	shellcmd  xsh_help	(int32, char *[]);
+
+
+/* in file xsh_ping6.c */
+extern shellcmd   xsh_ping6     (int32, char *[]);

@@ -51,6 +51,7 @@ void nd_init(void)
 	restore(mask);
 	return;
 }
+
 /* ----------------------------------------------------
  * nd_ncq_insert:insert a packet into the NC queue 
  * -------------------------------------------------*/
@@ -240,37 +241,45 @@ void nd_in_nsm(struct netpacket *pktptr)
 	int32 i=0;
 
 
+	//kprintf("ns message\n");
 	/* Pointer to Neighbor Solicitation Message */
 	nbsolptr = (struct nd_nbrsol *)pktptr->net_icdata;
 
-
+	
 	/* Validity Check */
 
 	/* ICMP Code should be 0 */
 	if(pktptr->net_iccode !=0)
 	{
+		kprintf("ICMP Code is wrong\n");
 		return;
 	}
 	/* ICMP length is 24 or more octests */
 	if(pktptr->net_ip6len < 24)
 	{
+		kprintf("ICMP length is greatar than 24\n");
 		return;
 	}
 
 	/* Target address is not a multicast address */
+        //ip6addr_print(nbsolptr->nd_trgtaddr);
+
 	if(isipmc(nbsolptr->nd_trgtaddr))
 	{
-		return;
+		kprintf("Target address is a multicast address\n");
+		//		return;
 	}
 
 	if(pktptr->net_ip6hl != 255)
 	{
+		kprintf("Hop limit is worng\n");
 		return;
 	}
 	if(isipunspec(pktptr->net_ip6src))
 	{
 		if(memcmp(pktptr->net_ip6dst, ip6_nd_snmpref, 13))
 		{
+			kprintf("IP doesn't match\n");
 			return;
 
 		}
@@ -279,11 +288,15 @@ void nd_in_nsm(struct netpacket *pktptr)
 	mask = disable();
 	struct ifentry *ifptr;
 	ifptr = &if_tab[pktptr->net_iface];
-	ip6addr_print(nbsolptr->nd_trgtaddr);
+	//kprintf("Target Address: ");
+	//ip6addr_print(nbsolptr->nd_trgtaddr);
+	//kprintf("IP source: ");
+	//ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 	for(i=0; i < ifptr->if_nipucast; i++)
 	{
-		if(!memcmp(ifptr->if_ip6ucast, nbsolptr->nd_trgtaddr, 16))
+		if(!memcmp(ifptr->if_ip6ucast[i].ip6addr, nbsolptr->nd_trgtaddr, 16))
 		{
+			//kprintf("IP match");
 			break;
 		}
 	}
@@ -291,6 +304,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	if(i >= ifptr->if_nipucast)
 	{
+		kprintf("Error\n");
 		restore(mask);
 		return;
 
@@ -307,6 +321,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 			/* If the Source Address is the unspecified address, 
 			 * the node MUST NOT create or update 
 			 * the Neighbor Cache entry */
+			//ip6addr_print(pktptr->net_ip6src);
 			if(isipunspec(pktptr->net_ip6src))
 			{
 				restore(mask);
@@ -347,7 +362,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 	}
 	memcpy(nbadvrptr->nd_trgtaddr, nbsolptr->nd_trgtaddr, 16);
 
-	ip6addr_print(nbadvrptr->nd_trgtaddr);
+	//ip6addr_print(nbadvrptr->nd_trgtaddr);
 	nbadvrptr->nd_r = 0;
 	nbadvrptr->nd_s = 1;
 	nbadvrptr->nd_o = 1;
@@ -371,6 +386,8 @@ void nd_in_nsm(struct netpacket *pktptr)
 	}
 
 
+	//kprintf("\nNeighbor adver sent ip dst: \n");
+	//ip6addr_print(ipdst);
 	icmp6_send(ipdst, ICMP6_NAM_TYPE, 
 			0 , nbadvrptr,
 			nbadvrlen, 
@@ -401,8 +418,9 @@ status nd_ns_send(int32 ncindex)
 
 	ndoptptr = (struct nd_opt *)nbsptr->nd_opts;
 
+	
 	memcpy(nbsptr->nd_trgtaddr, nbcptr->nc_nbipucast, 16);
-
+	//ip6addr_print(nbsptr->nd_trgtaddr);
 	ndoptptr->nd_type = ND_OPT_SLLA ;
 	ndoptptr->nd_len = 1;
 
@@ -410,9 +428,9 @@ status nd_ns_send(int32 ncindex)
 
 	if(nbcptr->nc_reachstate == NB_REACH_INC)
 	{
+		//kprintf("Incomplete state\n");
 		memcpy(ipdst, ip6_nd_snmpref, 16);
 		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
-
 
 	}
 	else
@@ -421,7 +439,7 @@ status nd_ns_send(int32 ncindex)
 
 	}
 
-       icmp6_send(ipdst, ICMP6_NSM_TYPE, 
+        icmp6_send(ipdst, ICMP6_NSM_TYPE, 
 			0 , nbsptr,
 			nslen, 
 			nbcptr->nc_iface);
@@ -447,6 +465,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	status retval;
 	nbadvptr = (struct nd_nbadvr *)pktptr->net_icdata;
 
+	//kprintf("nam \n");
         nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
 
 
@@ -464,7 +483,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	{
 
 		case NB_REACH_INC:
-			kprintf("INCOMPLETE STATE\n");
+			//kprintf("INCOMPLETE STATE\n");
 			switch(nboptptr->nd_type)
 			{
 				case ND_OPT_TLLA:

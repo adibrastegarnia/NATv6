@@ -42,6 +42,7 @@ extern	uint32	dnslookup(char *);
 
 /* in file dot2ip.c */
 extern	uint32	dot2ip(char *, uint32 *);
+extern  uint32  hex2ip(char *, byte[]) ;
 
 /* in file ethinit.c */
 extern 	int32	ethinit(struct dentry *);

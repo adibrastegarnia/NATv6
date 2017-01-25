@@ -13,12 +13,24 @@ process	main(void)
 
 	/* Wait for shell to exit and recreate it */
 
-	/*while (TRUE) {
+	/*byte *data = getmem(100);
+
+
+	int i= 0;
+	while(i < 20)
+	{
+	byte ip[]={0xFE, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x13, 0x80, 0x0A, 0xFF, 0xFE, 0x88, 0x66,0x33};
+	memcpy(data, ip, 16);
+	icmp6_send(ip, ICMP6_ECHREQ_TYPE, 0, (void *)data, 100,1);
+
+	i++;
+	}*/
+	while (TRUE) {
 		receive();
 		sleepms(200);
 		kprintf("\n\nMain process recreating shell\n\n");
 		resume(create(shell, 4096, 20, "shell", 1, CONSOLE));
-	}*/
+	}
 
 	return OK;
     
