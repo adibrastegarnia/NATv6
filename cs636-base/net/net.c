@@ -249,7 +249,7 @@ void	net_init (void)
 	ip6_nwmcast_gen(0, ifptr);
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 	
-	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
+	//control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
 
 
@@ -279,7 +279,7 @@ void	net_init (void)
 	ip6_nwmcast_gen(0, ifptr);
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 
-	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
+	//control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
 
 	if (host) {
@@ -296,12 +296,14 @@ void	net_init (void)
 	/* Create a low-level input process that reads raw frames and	*/
 	/*	demultiplexes them to the correct interface		*/
 
-	resume(create(rawin, 4096, 8000, "raw_input", 0));
 	
+	resume(create(rawin, 4096, 8000, "raw_input", 0));
+
 	for (iface=0; iface<NIFACES; iface++) {
 		sprintf(pname, "net%d_input", iface);
 		resume(create(netin, 4196, 5000, pname, 1, iface));
 	}
+	nd_init();
 
 	return;
 }

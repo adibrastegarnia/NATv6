@@ -28,6 +28,8 @@ void nd_init(void)
 		ncptr->nc_pqhead = 0;
 		ncptr->nc_pqtail = 0;
 		ncptr->nc_pqcount = 0;
+		ncptr->nc_reachstate = NB_REACH_FREE;
+		ncptr->nc_retries = 0;
 
 	}
 
@@ -49,6 +51,8 @@ void nd_init(void)
 
 	}
 	restore(mask);
+	resume(create(nd_timer, 4196, 2000, "nd_timer", 0, NULL));
+
 	return;
 }
 
@@ -400,6 +404,9 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 }
 
+/* ----------------------------------------------------
+ * nd_ns_send: Send a neighbor solicitation message 
+ * ---------------------------------------------------*/
 
 status nd_ns_send(int32 ncindex)
 {
@@ -420,7 +427,6 @@ status nd_ns_send(int32 ncindex)
 
 	
 	memcpy(nbsptr->nd_trgtaddr, nbcptr->nc_nbipucast, 16);
-	//ip6addr_print(nbsptr->nd_trgtaddr);
 	ndoptptr->nd_type = ND_OPT_SLLA ;
 	ndoptptr->nd_len = 1;
 
@@ -464,8 +470,6 @@ void nd_in_nam(struct netpacket *pktptr)
 
 	status retval;
 	nbadvptr = (struct nd_nbadvr *)pktptr->net_icdata;
-
-	//kprintf("nam \n");
         nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
 
 
@@ -533,10 +537,16 @@ void nd_in_nam(struct netpacket *pktptr)
 	
 
 
+}
+/* ---------------------------------------------------
+ * nd_rs_send: Send Router Soliciation Message 
+ * -------------------------------------------------*/
+
+status nd_rs_send()
+{
 
 
-	
-	
+
 
 
 }
@@ -566,11 +576,75 @@ void nd_in(struct netpacket *pktptr)
 			break;
 		case ICMP6_RDM_TYPE:
 			break;
-		case ICMP6_ECHREQ_TYPE:
-			break;
-		case ICMP6_ECHRES_TYPE:
-			break;
+		
 	}
+
+}
+
+/*------------------------------------------------------
+ * nd_timer: Neighbor discovery timer 
+ * ----------------------------------------------------*/
+
+process nd_timer()
+{
+	int32 ncindex;
+	struct nd_nbcentry *nbcptr;
+
+	intmask mask;
+	while(TRUE)
+	{
+		mask = disable();
+
+		for(ncindex=0; ncindex < ND_NCACHE_SIZE; ncindex++)
+		{	
+			nbcptr = &nbcache_tab[ncindex];
+			if(nbcptr->nc_state == NC_STATE_FREE)
+			{
+				continue;
+
+			}
+			if(nbcptr->nc_reachstate == NB_REACH_INC)
+			{
+				//kprintf("time:%d\n", nbcptr->nc_texpire);
+				if(nbcptr->nc_texpire-- <=0)
+				{
+					if(nbcptr->nc_retries < MAX_UNICAST_SOLICIT)
+					{
+						nd_ns_send(ncindex);
+						nbcptr->nc_retries++;
+						nbcptr->nc_texpire = ND_RETRAN_TIME; 
+					}
+					else
+					{
+						while(nbcptr->nc_pqcount > 0)
+						{
+
+
+							freebuf(nbcptr->nc_pktq[nbcptr->nc_pqtail++]);
+							if(nbcptr->nc_pqtail  > NC_PKTQ_SIZE)
+							{
+
+								nbcptr->nc_pqtail = 0;
+							}
+
+							nbcptr->nc_pqcount--;
+
+
+						}
+
+						nbcptr->nc_state = NC_STATE_FREE;  
+
+					}
+
+
+				}
+			}
+		}
+		restore(mask);
+		sleepms(1);
+	}
+
+
 
 }
 

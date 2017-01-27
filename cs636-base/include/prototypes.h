@@ -313,6 +313,7 @@ extern int32  nd_ncfindip(byte *);
 extern int32 nd_ncnew(byte *, byte *hwaddr, int32, int32, int32);
 extern status nd_ns_send(int32);
 extern void   nd_ncq_insert(struct netpacket *, int32);
+extern process nd_timer();
 /* in file open.c */
 extern	syscall	open(did32, char *, char *);
 

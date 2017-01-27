@@ -22,6 +22,10 @@ byte ip6_allnodesmc[] = { 0xff, 0x01, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 1};;
 
 
+/* All routers IPv6 multicast address */
+byte ip6_allroutermc[]= { 0xff, 0x02, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 2};
+
 /*----------------------------------------------
  * ip6llgen : Generate a link local IPv6 address 
  * --------------------------------------------*/
@@ -266,7 +270,6 @@ status ip6_send(struct netpacket *pktptr)
 	struct ifentry  *ifptr; 
 	struct nd_nbcentry *nbcptr;
 	int32 ncindex;
-
 	switch(pktptr->net_ip6nh)
 	{
 
@@ -278,13 +281,15 @@ status ip6_send(struct netpacket *pktptr)
 
 
 	}
+
+	/* Next Hop determination */
+
 	/* Resolve an IPv6 Address to a Layer 2 address */
 	retval = ip6addr_reso(pktptr);
         if(retval == SYSERR)
 	{
 		/* NB discovery should be done */
-		//kprintf("\nAddress Resolution is failed\n");
-		/* Create an entry in the neighbor Cache */
+		/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
 		ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
 				pktptr->net_iface, NB_REACH_INC, 0);
 
@@ -311,12 +316,33 @@ status ip6_send(struct netpacket *pktptr)
 			memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
 		
 		}
-		else
+		else if(pktptr->net_iface == 0)
 		{
-			//kprintf("Multicast\n");
 			pktptr->net_dst[0] = 0x33;
 			pktptr->net_dst[1] = 0x33;
 			memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
+
+		}
+		else if(pktptr->net_iface == 1)
+		{
+	
+			ifptr = &if_tab[1];
+			pktptr->net_dst[0]=  ifptr->if_macbcast[0];
+			pktptr->net_dst[1] = ifptr->if_macbcast[1];
+			pktptr->net_dst[2] = ifptr->if_macbcast[2];
+			pktptr->net_dst[3] = ifptr->if_macbcast[3];
+			pktptr->net_dst[4] = ifptr->if_macbcast[4];
+			pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
+		}
+		else if(pktptr->net_iface == 2)
+		{
+			ifptr = &if_tab[2];
+			pktptr->net_dst[0]=  ifptr->if_macbcast[0];
+			pktptr->net_dst[1] = ifptr->if_macbcast[1];
+			pktptr->net_dst[2] = ifptr->if_macbcast[2];
+			pktptr->net_dst[3] = ifptr->if_macbcast[3];
+			pktptr->net_dst[4] = ifptr->if_macbcast[4];
+			pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
 
 		}
 

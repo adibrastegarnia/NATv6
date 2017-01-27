@@ -12,6 +12,7 @@
 #define RT_STATE_USED 1
 
 /* neighbor's reachability state */
+#define NB_REACH_FREE -1;
 #define NB_REACH_INC  0
 #define NB_REACH_REA  1
 #define NB_REACH_STA  2
@@ -29,7 +30,18 @@
 
 #define ND_REACH_TIME  30000
 #define ND_RETRAN_TIME 1000
+#define MAX_UNICAST_SOLICIT 3
 
+
+/* Router Solicitation message format */
+#pragma pack(1)
+struct nd_rsm{
+
+	uint32 nd_reserved;
+	byte nd_opts[];
+};
+
+#pragma pack(0)
 
 
 
@@ -115,6 +127,7 @@ struct nd_nbcentry
 	byte  nc_hwaddr[ETH_ADDR_LEN];
 	int32 nc_isrouter;
 	int32 nc_texpire;
+	int32 nc_retries;
 	int32 nc_reachstate;
 	int32 nc_iface;
 	int32 nc_numprobes;
