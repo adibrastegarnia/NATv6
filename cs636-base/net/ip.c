@@ -387,7 +387,6 @@ void ip6_hton(struct netpacket *pktptr)
  * ---------------------------------------------------------*/
 void ip6addr_print(byte *ip6addr)
 {
-	kprintf("\n");
 	int32	i;
 	uint16	*ptr16;
 
@@ -398,6 +397,5 @@ void ip6addr_print(byte *ip6addr)
 		ptr16++;					
 	}
 	kprintf("%04X", htons(*ptr16));
-	kprintf("\n");
 
 }

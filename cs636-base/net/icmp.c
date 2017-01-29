@@ -31,7 +31,9 @@ void icmp_init(void){
 
 void icmp6_in(struct netpacket *pktptr)
 {
-
+	intmask	mask;			/* Saved interrupt mask		*/
+	int32	slot;			/* Slot in ICMP table		*/
+	struct	icmpentry *icmptr;	/* Pointer to icmptab entry	*/
 
 	if(icmp6_chksum(pktptr) !=0)
 	{
@@ -56,7 +58,39 @@ void icmp6_in(struct netpacket *pktptr)
 
 		/* ICMP Router Advertisement Message */
 		case ICMP6_ECHRES_TYPE:
-			kprintf("Got reply\n");
+	/* Handle Echo Reply message: verify that ID is valid */
+	mask = disable();
+	slot = pktptr->net_icdata[0];
+	if ( (slot < 0) || (slot >= ICMP_SLOTS) ) {
+		freebuf((char *)pktptr);
+		restore(mask);
+		return;
+	}
+
+	/* Verify that slot in table is in use and IP address	*/
+	/*    in incomming packet matches IP address in table	*/
+
+	icmptr = &icmptab[slot];
+	if ( (icmptr->icstate == ICMP_FREE) ) {
+		freebuf((char *)pktptr);	/* discard packet */
+		restore(mask);
+		return;
+	}
+
+	/* Add packet to queue */
+
+	icmptr->iccount++;
+	icmptr->icqueue[icmptr->ictail++] = pktptr;
+	if (icmptr->ictail >= ICMP_QSIZ) {
+		icmptr->ictail = 0;
+	}
+	if (icmptr->icstate == ICMP_RECV) {
+		icmptr->icstate = ICMP_USED;
+		send (icmptr->icpid, OK);
+	}
+	restore(mask);
+	return;
+
 			break;
 		case ICMP6_RAM_TYPE:
 			kprintf("ICMP6 Router Advertisemet message\n");
@@ -201,6 +235,181 @@ uint16 icmp6_chksum(struct netpacket *pktptr)
 
 
 }
+
+
+
+/*------------------------------------------------------------------------
+ * icmp_register  -  Register a remote IP address for ping replies
+ *------------------------------------------------------------------------
+ */
+int32	icmp6_register (
+	 byte	remip[]			/* Remote IP address		*/
+	)
+{
+	intmask	mask;			/* Saved interrupt mask		*/
+	int32	i;			/* Index into icmptab		*/
+	int32	freeslot;		/* Index of slot to use		*/
+	struct	icmpentry *icmptr;	/* Pointer to icmptab entry	*/
+
+	mask = disable();
+
+	/* Find a free slot in the table */
+
+	freeslot = -1;
+	for (i=0; i<ICMP_SLOTS; i++) {
+		icmptr = &icmptab[i];
+		if (icmptr->icstate == ICMP_FREE) {
+			if (freeslot == -1) {
+				freeslot = i;
+			}
+		} else if (icmptr->icremip == remip) {
+			restore(mask);
+			return SYSERR;	/* Already registered */
+		}
+	}
+	if (freeslot == -1) {  /* No free entries in table */
+
+		restore(mask);
+		return SYSERR;
+	}
+
+	/* Fill in table entry */
+
+	icmptr = &icmptab[freeslot];
+	icmptr->icstate = ICMP_USED;
+	memcpy(icmptr->icremip, remip, 16);
+	icmptr->iccount = 0;
+	icmptr->ichead = icmptr->ictail = 0;
+	icmptr->icpid = -1;
+	restore(mask);
+	return freeslot;
+}
+
+/*------------------------------------------------------------------------
+ * icmp_recv  -  Receive an icmp echo reply packet
+ *------------------------------------------------------------------------
+ */
+int32	icmp6_recv (
+	 int32	icmpid,			/* ICMP slot identifier		*/
+	 char   *buff,			/* Buffer to ICMP data		*/
+	 int32	len,			/* Length of buffer		*/
+	 uint32	timeout			/* Time to wait in msec		*/
+	)
+{
+	intmask	mask;			/* Saved interrupt mask		*/
+	struct	icmpentry *icmptr;	/* Pointer to icmptab entry	*/
+	umsg32	msg;			/* Message from recvtime()	*/
+	struct	netpacket *pkt;		/* Pointer to packet being read	*/
+	int32	datalen;		/* Length of ICMP data area	*/
+	char	*icdataptr;		/* Pointer to icmp data		*/
+	int32	i;			/* Counter for data copy	*/
+
+	/* Verify that the ID is valid */
+
+	if ( (icmpid < 0) || (icmpid >= ICMP_SLOTS) ) {
+		return SYSERR;
+	}
+
+	/* Insure only one process touches the table at a time */
+
+	mask = disable();
+
+	/* Verify that the ID has been registered and is idle */
+
+	icmptr = &icmptab[icmpid];
+	if (icmptr->icstate != ICMP_USED) {
+		restore(mask);
+		return SYSERR;
+	}
+
+	if (icmptr->iccount == 0) {		/* No packet is waiting */
+		icmptr->icstate = ICMP_RECV;
+		icmptr->icpid = currpid;
+		msg = recvclr();
+		msg = recvtime(timeout);	/* Wait for a reply */
+		icmptr->icstate = ICMP_USED;
+		if (msg == TIMEOUT) {
+			restore(mask);
+			return TIMEOUT;
+		} else if (msg != OK) {
+			restore(mask);
+			return SYSERR;
+		}
+	}
+
+	/* Packet has arrived -- dequeue it */
+
+	pkt = icmptr->icqueue[icmptr->ichead++];
+	if (icmptr->ichead >= ICMP_SLOTS) {
+		icmptr->ichead = 0;
+	}
+	icmptr->iccount--;
+
+	/* Copy data from ICMP message into caller's buffer */
+
+	datalen = pkt->net_ip6len - IP_HDR_LEN - ICMP_HDR_LEN;
+	icdataptr = (char *) &pkt->net_icdata;
+	for (i=0; i<datalen; i++) {
+		if (i >= len) {
+			break;
+		}
+		*buff++ = *icdataptr++;
+	}
+	freebuf((char *)pkt);
+	restore(mask);
+	return i;
+}
+
+
+/*------------------------------------------------------------------------
+ * icmp_release  -  Release a previously-registered ICMP icmpid
+ *------------------------------------------------------------------------
+ */
+status	icmp6_release (
+	 int32	icmpid			/* Slot in icmptab to release	*/
+	)
+{
+	intmask	mask;			/* Saved interrupt mask		*/
+	struct	icmpentry *icmptr;	/* Pointer to icmptab entry	*/
+	struct	netpacket *pkt;		/* Pointer to packet		*/
+
+	mask = disable();
+
+	/* Check arg and insure entry in table is in use */
+
+	if ( (icmpid < 0) || (icmpid >= ICMP_SLOTS) ) {
+		restore(mask);
+		return SYSERR;
+	}
+	icmptr = &icmptab[icmpid];
+	if (icmptr->icstate != ICMP_USED) {
+		restore(mask);
+		return SYSERR;
+	}
+
+	/* Remove each packet from the queue and free the buffer */
+
+	resched_cntl(DEFER_START);
+	while (icmptr->iccount > 0) {
+		pkt = icmptr->icqueue[icmptr->ichead++];
+		if (icmptr->ichead >= ICMP_SLOTS) {
+			icmptr->ichead = 0;
+
+		}
+		freebuf((char *)pkt);
+		icmptr->iccount--;
+	}
+
+	/* Mark the entry free */
+
+	icmptr->icstate = ICMP_FREE;
+	resched_cntl(DEFER_STOP);
+	restore(mask);
+	return OK;
+}
+
+
+
 
 
 

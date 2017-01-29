@@ -215,11 +215,14 @@ void	net_init (void)
 	ifptr->if_nipmcast = 0;
 	/* Generate IPv6 link local address for interface 0 */
 
+	kprintf("\n\n");
+
 	ip6llgen(ifptr);
 	ip6_snmaddrgen(0 , ifptr);
 	ip6_nwmcast_gen(0, ifptr);
+	kprintf("\n\n");
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
-
+	kprintf("\n\n");
 
         control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
@@ -247,8 +250,9 @@ void	net_init (void)
 	ip6llgen(ifptr);
 	ip6_snmaddrgen(0 , ifptr);
 	ip6_nwmcast_gen(0, ifptr);
+	kprintf("\n\n");
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
-	
+	kprintf("\n\n");
 	//control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
 
@@ -277,8 +281,9 @@ void	net_init (void)
 	ip6llgen(ifptr);
 	ip6_snmaddrgen(0 , ifptr);
 	ip6_nwmcast_gen(0, ifptr);
+	kprintf("\n\n");
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
-
+	kprintf("\n\n");
 	//control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
 
 
@@ -356,7 +361,6 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
-			kprintf("IP6\n");
 			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);
 			continue;

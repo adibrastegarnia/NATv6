@@ -132,6 +132,9 @@ extern void icmp6_in(struct netpacket *);
 extern struct netpacket *icmp_mkpkt(byte[], byte, byte, void *, int32, int32);
 extern status icmp6_send(byte[], byte, byte, void *, int32, int32);
 extern uint16 icmp6_chksum(struct netpacket *);
+extern int32 icmp6_register (byte []);
+extern int32	icmp6_recv (int32, char   *,int32, uint32);
+extern status	icmp6_release (int32);
 
 /* in file init.c */
 extern	syscall	init(did32);
