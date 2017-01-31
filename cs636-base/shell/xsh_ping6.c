@@ -105,10 +105,10 @@ shellcmd xsh_ping6(int nargs, char *args[])
 		
 		/* Read a reply */
 		retval = icmp6_recv(slot, rbuf, sizeof(rbuf), 500);
-		kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d \n", rbuf[1], rbuf[0], seq, slot);
+		/*kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d \n", rbuf[1], rbuf[0], seq, slot);
 		for (i = 0; i<sizeof(rbuf); i++) {
 			kprintf("%01x ",rbuf[i]);// = 0xff & i;
-		}
+		}*/
 		//GET TIMER DATA
 		if (retval == TIMEOUT) {
 			kprintf("ping6: no response from host %s\n", args[1]);
