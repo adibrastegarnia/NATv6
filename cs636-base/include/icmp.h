@@ -38,7 +38,7 @@
 
 struct	icmpentry {			/* entry in the ICMP table	*/
 	int32	icstate;		/* state of entry: free/used	*/
-	uint32	icremip;		/* remote IP address		*/
+	byte	icremip[16];		/* remote IP address		*/
 	int32	ichead;			/* index of next packet to read	*/
 	int32	ictail;			/* index of next slot to insert	*/
 	int32	iccount;		/* count of packets enqueued	*/

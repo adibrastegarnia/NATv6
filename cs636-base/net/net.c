@@ -361,6 +361,7 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
+			kprintf("IPV6\n");
 			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);
 			continue;

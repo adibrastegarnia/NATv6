@@ -5,8 +5,8 @@
 #include <string.h>
 char	buf[56];			/* buffer of chars		*/
 
-void sender(byte* ipaddr)	{
-	icmp6_send(ipaddr, ICMP6_ECHREQ_TYPE, 0, (void *)buf, 56,0);
+void sender(byte* ipaddr, int32 interface)	{
+	icmp6_send(ipaddr, ICMP6_ECHREQ_TYPE, 0, (void *)buf, 56,interface);
 }
 /*------------------------------------------------------------------------
  * xsh_ping - shell command to ping a remote host
@@ -21,8 +21,9 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	int32	slot;				/* Slot in ICMP to use		*/
 	int32	i;		/* next value to use		*/
 	int32 pSent = 0, pRecv = 0;
-	char interf[10];
+	int32 iface = 0;
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
+	static int32 seq = 0;
 
 	/* For argument '--help', emit help about the 'ping' command	*/
 
@@ -44,14 +45,19 @@ shellcmd xsh_ping6(int nargs, char *args[])
 				args[0]);
 		return 1;
 	}
-	ifptr = &if_tab[0];
+
 	if(nargs == 3)	{
-		strncpy(interf, args[2], 5);
-		if(memcmp(ifptr->if_name, interf,4)){
-			//continue as normal
-		}
-		else{
-			kprintf("\n Unsupported Interface %s!\n", interf);
+		if(args[2][0] == '0'){
+				//iface already 0
+			}
+		else if(args[2][0] == '1'){
+				iface = 1;
+			}
+		else if(args[2][0] == '2'){
+				iface  = 2;
+			}
+		else	{
+			kprintf("\n Unsupported Interface!\n");
 			return 1;
 		}
 	}
@@ -63,7 +69,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	}
 
 	/* Register to receive an ICMP Echo Reply */
-
+	ifptr = &if_tab[iface];
 	slot = icmp6_register(ipaddr);
 	if (slot == SYSERR) {
 		fprintf(stderr,"%s: ICMP registration failed\n", args[0]);
@@ -72,7 +78,8 @@ shellcmd xsh_ping6(int nargs, char *args[])
 
 	/* Fill the buffer with values - start with low-order byte of	*/
 	/*	the sequence number and increment			*/
-	buf[0] = buf[1] = slot;
+	buf[0] = slot;
+	buf[1] = ++seq;
 	for (i = 2; i<sizeof(buf); i++) {
 		buf[i] = 0xff & i;
 	}
@@ -89,28 +96,39 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	while(pings--)	{
 		kprintf("Pinging ..\n");
 		//SET TIMER DATA
-		
-		resume(create(sender, 1024, 60, "Sender", 1, ipaddr));
+		//Update seq no
+		buf[1] = ++seq;
+
+		resume(create(sender, 1024, 60, "Sender", 2, ipaddr, iface));
 		pSent++;
 		// Receive and print packet data
 		
 		/* Read a reply */
 		retval = icmp6_recv(slot, rbuf, sizeof(rbuf), 500);
+		kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d \n", rbuf[1], rbuf[0], seq, slot);
+		for (i = 0; i<sizeof(rbuf); i++) {
+			kprintf("%01x ",rbuf[i]);// = 0xff & i;
+		}
 		//GET TIMER DATA
 		if (retval == TIMEOUT) {
 			kprintf("ping6: no response from host %s\n", args[1]);
 		}
-		else	{
-			pRecv++;		
-			kprintf("%d bytes from ", 56);	
-			ip6addr_print(ipaddr);
-			kprintf(": rtt = %d \n",0);// time1-time2);
+		else{
+			if(rbuf[1] == seq && rbuf[0] ==slot)	{
+				pRecv++;		
+				kprintf("%d bytes from ", 56);	
+				ip6addr_print(ipaddr);
+				kprintf(": rtt = %d \n",0);// time1-time2);
+			}
+			else{
+				//kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d", buf[1], buf[0], seq, slot);
+			}
 		}
-		icmp6_release(slot);
+
 
 		sleepms(1000);
 	}
-
+	icmp6_release(slot);
 	// Ping statistics
 	kprintf("--- ");ip6addr_print(ipaddr); kprintf("  ping statistics ---\n");
 	kprintf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", pSent,pRecv,(((pSent-pRecv)*100)/pSent),0);

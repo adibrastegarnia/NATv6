@@ -354,6 +354,7 @@ int32	icmp6_recv (
 			break;
 		}
 		*buff++ = *icdataptr++;
+		
 	}
 	freebuf((char *)pkt);
 	restore(mask);
