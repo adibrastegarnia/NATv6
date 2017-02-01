@@ -4,10 +4,22 @@
 #include <stdio.h>
 #include <string.h>
 char	buf[56];			/* buffer of chars		*/
+char eofReceived = 0;			/* Flag for EOF */
 
 void sender(byte* ipaddr, int32 interface)	{
 	icmp6_send(ipaddr, ICMP6_ECHREQ_TYPE, 0, (void *)buf, 56,interface);
 }
+
+void pollInputEof()	{
+	char nextch;
+	nextch = getc(stdin);
+	while (nextch != EOF) {
+		putc(stdout, nextch);
+		nextch = getc(stdin);
+	}
+	eofReceived = 1;
+}
+
 /*------------------------------------------------------------------------
  * xsh_ping - shell command to ping a remote host
  *------------------------------------------------------------------------
@@ -92,8 +104,8 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
  	kprintf(" on interface %s with", ifptr->if_name);
  	kprintf(" 56 data bytes\n\n");
-
-	while(pings--)	{
+	resume(create(pollInputEof, 1024, 60, "Poller", 0, 0));
+	while(eofReceived == 0)	{
 		kprintf("Pinging ..\n");
 		//SET TIMER DATA
 		//Update seq no
@@ -128,6 +140,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 
 		sleepms(1000);
 	}
+	eofReceived = 0;
 	icmp6_release(slot);
 	// Ping statistics
 	kprintf("--- ");ip6addr_print(ipaddr); kprintf("  ping statistics ---\n");

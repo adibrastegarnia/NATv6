@@ -467,7 +467,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	struct nd_nbadvr *nbadvptr;
 	struct nd_nbcentry *nbcptr;
         struct nd_opt    *nboptptr;
-
+	struct netpacket *pktptrip6;
 	status retval;
 	nbadvptr = (struct nd_nbadvr *)pktptr->net_icdata;
         nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
@@ -527,7 +527,13 @@ void nd_in_nam(struct netpacket *pktptr)
 
 					}
 					/* sends any packets queued for the neighbor awaiting address resolution */
-
+					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount==0)	{
+					
+						nbcptr->nc_pqcount--;
+						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
+						pktptrip6->net_icchksm = 0x0000;
+						ip6_send(pktptrip6);
+					}
 					break;
 				default:
 					return;
