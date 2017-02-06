@@ -2,7 +2,7 @@
 
 struct	icmpentry icmptab[ICMP_SLOTS];   /* Table of processes using ping*/
 
-
+extern uint32 tRecv;
 
 /*---------------------------------------------------------------
  * icmp_init: Initialize icmp table 
@@ -60,6 +60,7 @@ void icmp6_in(struct netpacket *pktptr)
 		case ICMP6_ECHRES_TYPE:
 	/* Handle Echo Reply message: verify that ID is valid */
 	mask = disable();
+	tRecv = hpet->mcv_l;
 	slot = pktptr->net_icdata[0];
 	if ( (slot < 0) || (slot >= ICMP_SLOTS) ) {
 		freebuf((char *)pktptr);

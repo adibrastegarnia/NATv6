@@ -5,11 +5,19 @@
 #include <string.h>
 char	buf[56];			/* buffer of chars		*/
 char eofReceived = 0;			/* Flag for EOF */
+uint32 tSent = 0;			/* The send timer value */
+uint32 tRecv = 0;			/* The receive timer value */
 
-void sender(byte* ipaddr, int32 interface)	{
+// Process to send the ICMP message
+void sender(byte* ipaddr, int32 interface)	{	
+	intmask	mask;			/* Saved interrupt mask		*/
+	mask = disable();
+	tSent= hpet->mcv_l;
+	restore(mask);
 	icmp6_send(ipaddr, ICMP6_ECHREQ_TYPE, 0, (void *)buf, 56,interface);
 }
 
+// Process to check console input for EOF
 void pollInputEof()	{
 	char nextch;
 	nextch = getc(stdin);
@@ -33,6 +41,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	int32	slot;				/* Slot in ICMP to use		*/
 	int32	i;		/* next value to use		*/
 	int32 pSent = 0, pRecv = 0;
+
 	int32 iface = 0;
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
 	static int32 seq = 0;
@@ -121,7 +130,8 @@ shellcmd xsh_ping6(int nargs, char *args[])
 		for (i = 0; i<sizeof(rbuf); i++) {
 			kprintf("%01x ",rbuf[i]);// = 0xff & i;
 		}*/
-		//GET TIMER DATA
+
+		
 		if (retval == TIMEOUT) {
 			kprintf("ping6: no response from host %s\n", args[1]);
 		}
@@ -130,7 +140,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 				pRecv++;		
 				kprintf("%d bytes from ", 56);	
 				ip6addr_print(ipaddr);
-				kprintf(": rtt = %d \n",0);// time1-time2);
+				kprintf(": rtt = %.6fus\n", ((tRecv-tSent)/14.318));
 			}
 			else{
 				//kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d", buf[1], buf[0], seq, slot);
