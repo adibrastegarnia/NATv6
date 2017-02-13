@@ -1,6 +1,8 @@
 #include <xinu.h>
-
+#include <stdlib.h>
+/* Neighbor Cache */
 struct nd_nbcentry nbcache_tab[ND_NCACHE_SIZE];
+/* Routing Table */
 struct nd_routertbl ndroute_tab[ND_ROUTETAB_SIZE];  
 /* -----------------------------------------------
  * nd_init: Initialize neighbor discovery data structures 
@@ -40,7 +42,7 @@ void nd_init(void)
 	rtblptr->nd_onlink = TRUE;
 	rtblptr->nd_defgtw = FALSE;
 	rtblptr->nd_invatime = ND_INFINITE_TIME;
-
+	rtblptr->ipaddr.preflen = 16; 
 
 	for(i=1; i < ND_ROUTETAB_SIZE; i++)
 	{
@@ -50,7 +52,9 @@ void nd_init(void)
 
 
 	}
+	
 	restore(mask);
+	/* Create a process for the ND timer */
 	resume(create(nd_timer, 4196, 2000, "nd_timer", 0, NULL));
 
 	return;
@@ -303,6 +307,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 			//kprintf("IP match");
 			break;
 		}
+
 	}
 
 
@@ -437,6 +442,7 @@ status nd_ns_send(int32 ncindex)
 		//kprintf("Incomplete state\n");
 		memcpy(ipdst, ip6_nd_snmpref, 16);
 		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
+		//ip6addr_print(ipdst);
 
 	}
 	else
@@ -468,6 +474,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	struct nd_nbcentry *nbcptr;
         struct nd_opt    *nboptptr;
 
+	struct netpacket *pktptrip6;
 	status retval;
 	nbadvptr = (struct nd_nbadvr *)pktptr->net_icdata;
         nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
@@ -477,17 +484,19 @@ void nd_in_nam(struct netpacket *pktptr)
 	retval = nd_ncfindip(pktptr->net_ip6src);
 	if(retval == SYSERR)
 	{
+
 		return;
 	}
 
 	nbcptr = &nbcache_tab[retval];
 	int32 rstate = nbcptr->nc_reachstate;
 
+	kprintf("rstate nd_in_nam:%d\n", rstate);
 	switch(rstate)
 	{
 
 		case NB_REACH_INC:
-			//kprintf("INCOMPLETE STATE\n");
+			kprintf("INCOMPLETE STATE\n");
 			switch(nboptptr->nd_type)
 			{
 				case ND_OPT_TLLA:
@@ -527,7 +536,13 @@ void nd_in_nam(struct netpacket *pktptr)
 
 					}
 					/* sends any packets queued for the neighbor awaiting address resolution */
+					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount==0)	{
+						nbcptr->nc_pqcount--;
+						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
+						pktptrip6->net_icchksm = 0x0000;
+						ip6_send(pktptrip6);
 
+					}
 					break;
 				default:
 					return;
@@ -539,15 +554,272 @@ void nd_in_nam(struct netpacket *pktptr)
 
 }
 /* ---------------------------------------------------
- * nd_rs_send: Send Router Soliciation Message 
+ * nd_rs_send: Send a Router Soliciation Message 
  * -------------------------------------------------*/
 
-status nd_rs_send()
+status nd_rs_send(int32 iface)
+{
+	intmask mask;
+	mask = disable();
+
+	struct nd_rsm *ndrsmptr;
+	struct nd_opt *ndoptptr;
+	int32 rsmlen = sizeof(struct nd_rsm) + 8;
+
+	byte ipdst[16];
+
+	ndrsmptr = (struct nd_rsm *)getmem(rsmlen);
+	memset(ndrsmptr, 0, rsmlen);
+	ndoptptr = (struct nd_opt *)ndrsmptr->nd_opts;
+
+	ndoptptr->nd_type = ND_OPT_SLLA ;
+	ndoptptr->nd_len = 1;
+	memcpy(ndoptptr->nd_lladr, if_tab[iface].if_macucast, ETH_ADDR_LEN);
+
+	/*  The host SHOULD delay the
+	 *  transmission for a random amount of time between 0 and
+	 *  MAX_RTR_SOLICITATION_DELAY */
+	int32 rand_delay = rand() % MAX_RTR_SOLICITATION_DELAY  + 1;
+	//kprintf("Random Delay: %d\n", rand_delay);
+	sleepms(rand_delay);
+	/* Destination address is All routers multicast address */
+	memcpy(ipdst, ip6_allroutermc, 16);
+	icmp6_send(ipdst, ICMP6_RSM_TYPE, 0 , ndrsmptr,rsmlen, iface);
+        freemem((char *)ndrsmptr, rsmlen);
+
+	kprintf("ND RS Message Sent\n");
+	restore(mask);
+	return OK;
+
+}
+
+/* nd_rsm_in: Handling an incoming Router Soliciation Message */
+void nd_rsm_in(struct netpacket *pktptr)
 {
 
+	struct nd_rsm *ndrsmptr;
+	struct nd_opt *ndoptptr;
+	struct nd_roadv *roadvptr;
+
+	struct ifentry *ifptr;
+	intmask mask;
+	mask  = disable();
+	byte ipdst[16];
+
+
+	/* ICMP Code should be 0 */
+	if(pktptr->net_iccode !=0)
+	{
+		kprintf("ICMP Code is wrong\n");
+		return;
+	}
+
+	/* ICMP Hop Limit should be 255 */
+	if(pktptr->net_ip6hl != 255)
+	{
+
+		kprintf("ICMP Hop Limit Should be 255\n");
+		return;
+
+	}
+	/* ICMP length is 8 or more octests */
+	if(pktptr->net_ip6len < 8)
+	{
+		kprintf("ICMP length is greatar than 8\n");
+		return;
+	}
 
 
 
+
+	ndrsmptr = (struct nd_rsm *)pktptr->net_icdata;
+	ndoptptr = (struct nd_opt *)ndrsmptr->nd_opts;
+
+
+	switch(ndoptptr->nd_type)
+	{
+		case ND_OPT_SLLA:
+
+			if(isipunspec(pktptr->net_ip6src))
+			{
+				restore(mask);
+				return;
+
+			}
+
+			if(nd_ncfindip(pktptr->net_ip6src) != SYSERR)
+			{
+				/* Update the entry which is found in the NB cache */
+				nd_ncupdate(pktptr->net_ip6src, 
+						ndoptptr->nd_lladr, 
+						FALSE, 0);
+			}
+			/* Create a New entry in NB cache data strucutre */
+			else
+			{
+			nd_ncnew(pktptr->net_ip6src, 
+					ndoptptr->nd_lladr,
+					pktptr->net_iface, 
+					NB_REACH_STA, FALSE);
+			}
+
+			break;
+
+	}
+
+
+
+
+	int32 roadvrlen = sizeof(struct nd_roadv) + 32;
+	roadvptr = (struct nd_roadv *)getmem(roadvrlen);
+	ndoptptr = (struct nd_opt *)roadvptr->nd_opts;
+
+	if((int32)roadvptr == SYSERR)
+	{
+
+		restore(mask);
+		return;
+
+	}
+	memset(roadvptr, 0 , roadvrlen);
+	
+
+	roadvptr->nd_curhl = 255;
+	roadvptr->nd_m = 0;
+	roadvptr->nd_o = 0;
+	roadvptr->nd_rolftime = 65535;
+	roadvptr->nd_reachtime = 0;
+	roadvptr->nd_retranstime = 0;
+	
+	ndoptptr->nd_type = ND_OPT_PREIF;
+	ndoptptr->nd_len = 4;
+	ndoptptr->nd_preflen = 16;
+	memset(ndoptptr->nd_res1, 0, sizeof(byte));
+	ndoptptr->nd_vallftime = 0xffffffff;
+	ndoptptr->nd_preflftime = 0xffffffff;
+	memset(ndoptptr->nd_res2, 0 , sizeof(uint32));
+        
+	ifptr = &if_tab[pktptr->net_iface];
+	memcpy(ndoptptr->nd_prefix, ip6_ulapref, 16);
+
+
+	if(pktptr->net_iface == 1)
+	{
+
+		ifptr = &if_tab[2];
+		memcpy(ndoptptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, 2);
+
+	}
+	else
+	{
+		ifptr = &if_tab[1];
+		memcpy(ndoptptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, 2);
+
+	}
+	//ip6addr_print(ndoptptr->nd_prefix);
+
+
+	if(isipunspec(pktptr->net_ip6src))
+	{
+
+		memcpy(ipdst, ip6_allnodesmc, 16); 
+	}
+	else
+	{
+		memcpy(ipdst, pktptr->net_ip6src, 16);
+	}
+
+	/* Sending Router Advertisment Message */
+
+	icmp6_send(ipdst, ICMP6_RAM_TYPE, 
+			0 , roadvptr,
+			roadvrlen, 
+			pktptr->net_iface);
+
+	freemem((char *)roadvptr, roadvrlen);
+	restore(mask);
+	return;
+
+}
+
+/* --------------------------------------------------
+ * nd_ram_in: Handling Router Advertisement Message 
+ * -------------------------------------------------*/
+
+void nd_ram_in(struct netpacket *pktptr)
+{
+	struct nd_roadv *roadvptr;
+	struct nd_opt  *ndoptptr;
+	roadvptr = (struct nd_roadv *)pktptr->net_icdata;
+	ndoptptr = (struct nd_opt *)roadvptr->nd_opts;
+
+	intmask mask;
+	mask = disable();
+
+	/* IP Source Address is a link-local address */
+
+	if(!isipllu(pktptr->net_ip6src))
+	{
+
+		restore(mask);
+		return;
+
+	}
+
+
+
+	/* ICMP Code should be 0 */
+	if(pktptr->net_iccode !=0)
+	{
+		kprintf("ICMP Code is wrong\n");
+		return;
+	}
+
+	/* ICMP Hop Limit should be 255 */
+	if(pktptr->net_ip6hl != 255)
+	{
+
+		kprintf("ICMP Hop Limit Should be 255\n");
+		return;
+
+	}
+	/* ICMP length is 8 or more octests */
+	if(pktptr->net_ip6len < 16)
+	{
+		kprintf("ICMP length is greatar than 8\n");
+		return;
+	}
+
+
+	/* Update the Prefix List */
+	int32 i;
+	struct nd_routertbl *rtblptr;
+	for(i=0; i< ND_ROUTETAB_SIZE; i++)
+	{
+		rtblptr = &ndroute_tab[i];
+		if(rtblptr->state == RT_STATE_FREE)
+		{
+			rtblptr->state = RT_STATE_USED;
+			memcpy(rtblptr->ipaddr.ip6addr, pktptr->net_ip6src,16);
+			rtblptr->ipaddr.preflen = ndoptptr->nd_preflen;
+			memcpy(rtblptr->nd_prefix,ndoptptr->nd_prefix, 16);
+			break;
+			
+
+		}
+		 
+		
+	}
+
+
+	ip6addr_print(pktptr->net_ip6src);
+	//kprintf("nd pref len %d\n", (ndoptptr->nd_preflen));
+	ip6addr_print(ndoptptr->nd_prefix);
+ 	
+	
+	restore(mask);
+
+	return;
 
 }
 
@@ -563,18 +835,25 @@ void nd_in(struct netpacket *pktptr)
 	{
 		/* Handling Neighbour Soliciation Packet */
 		case ICMP6_NSM_TYPE:
+			kprintf("Neighbor Solicitation Message\n");
 			nd_in_nsm(pktptr);
 			break;
 		/* Handling Neighbour Advertisment Packet */
 		case ICMP6_NAM_TYPE:
+			kprintf("Neighbor Advertisement Message\n");
 			nd_in_nam(pktptr);
 			break;
 	
 
 		case ICMP6_RAM_TYPE:
 			kprintf("Router Advertisemet\n");
+			nd_ram_in(pktptr);
 			break;
 		case ICMP6_RDM_TYPE:
+			break;
+		case ICMP6_RSM_TYPE:
+			kprintf("Router Solicitation Message\n");
+			nd_rsm_in(pktptr);
 			break;
 		
 	}

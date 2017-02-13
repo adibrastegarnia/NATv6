@@ -82,3 +82,6 @@ extern	shellcmd  xsh_help	(int32, char *[]);
 
 /* in file xsh_ping6.c */
 extern shellcmd   xsh_ping6     (int32, char *[]);
+
+/* in file xsh_route.c */
+extern shellcmd xsh_route(int32, char*[]);

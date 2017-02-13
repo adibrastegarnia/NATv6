@@ -31,7 +31,7 @@
 #define ND_REACH_TIME  30000
 #define ND_RETRAN_TIME 1000
 #define MAX_UNICAST_SOLICIT 3
-
+#define MAX_RTR_SOLICITATION_DELAY 1000
 
 /* Router Solicitation message format */
 #pragma pack(1)
@@ -53,10 +53,13 @@ struct nd_roadv
 	byte nd_curhl;        	/* current Hop Limit 	*/
 	byte nd_m:1;
 	byte nd_o:1;
+	byte nd_resv:6;
 	uint16 nd_rolftime;   	/* Router Lifetime   	*/
 	uint32 nd_reachtime;  	/*  Reachbale time    	*/
 	uint32 nd_retranstime;  /* Retrans time 	*/
 	byte   nd_opts[];
+	
+
 };
 #pragma pack(0)
 
@@ -103,10 +106,11 @@ struct nd_opt{
 		/* Prefix Information */
 		struct {
 			byte nd_preflen;
-			byte nd_l:1;
+			byte nd_res1:6;
 			byte nd_a:1;
-			byte nd_res1;
+			byte nd_l:1;			
 			uint32 nd_vallftime;
+			uint32 nd_preflftime;
 			uint32 nd_res2;
 			byte   nd_prefix[16];
 
@@ -146,6 +150,8 @@ struct nd_routertbl{
 	bool8 nd_defgtw;
 	bool8 nd_onlink;
 	int32 state;
+        struct ifip6addr ipaddr; 
+	
 
 };
 

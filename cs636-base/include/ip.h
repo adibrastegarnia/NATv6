@@ -49,6 +49,7 @@ extern	struct	iqentry	ipoqueue;	/* Network output queue		*/
 
 #define IP_ICMP6   58                  /* ICMP Protocol type for IPv6   */
 
+extern byte ip6_ulapref[];
 
 /* IP Link-local prefix */
 extern byte	ip6_llpref[];
@@ -65,6 +66,9 @@ extern byte ip6_unspec[16];
 /* All nodes IPv6 Multicast address */
 
 extern byte ip6_allnodesmc[16];
+
+/* All routers multicast IPv6 address */
+extern byte ip6_allroutermc[16];
 
 /* IPv6 Extension header strucutre */
 struct ip6_ext_hdr
@@ -105,9 +109,14 @@ struct pseudo {
 /* Check IPv6 address is mutlicast or not */
 #define	isipmc(x)	((*(x)) == 0xff)
 /* Check IPv6 address is link local address or not */
-#define	isipllu(x)	(!memcmp((x), ip6_llprefix, 8))
+#define	isipllu(x)	(!memcmp((x), ip6_llpref, 8))
 
 /* Check IPv6  address an unspecified address or not */
 #define	isipunspec(x) (!memcmp((x), ip6_unspec, 16))
+
+
+
+/* Check IPv6 address is unique local address */
+#define isipula(x)    ((*(x)) == 0xfd)
 
 

@@ -118,6 +118,8 @@ struct	ifentry	{
 	struct ifip6addr if_ip6ucast[IF_MAX_NUCAST];   /* IPv6 unicast address 	 */
 	struct ifip6addr if_ip6mcast[IF_MAC_NMCAST];   /* IPv6 multicast address */
 	struct ifip6nmcast if_ip6newmcast[IF_MAX_NUCAST];
+	struct ifip6addr if_ip6mcrouter;
+	//struct ifip6addr if_ip6ula;
 
 	int32 if_nipmcast;
 	int32 if_nipucast;

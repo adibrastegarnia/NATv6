@@ -3,6 +3,10 @@
 
 struct	iqentry ipoqueue; 
 
+/* Unique local address prefix */
+byte ip6_ulapref[]= {0xfd, 0x00, 0, 0, 0, 0, 
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 
 /* IP Link-local prefix */
 byte	ip6_llpref[] = { 0xfe, 0x80, 0, 0, 0, 0, 0, 0,
@@ -23,8 +27,24 @@ byte ip6_allnodesmc[] = { 0xff, 0x01, 0, 0, 0, 0, 0, 0,
 
 
 /* All routers IPv6 multicast address */
-byte ip6_allroutermc[]= { 0xff, 0x02, 0, 0, 0, 0, 0, 0,
+byte ip6_allroutermc[]= { 0xff, 0x01, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 2};
+
+/* ip6ula_gen: Generate a unique local IP address  */
+void ip6ula_gen(int32 index, struct ifentry *ifptr)
+{
+	int32 index2 = ifptr->if_nipucast;
+
+	memcpy(ifptr->if_ip6ucast[index2].ip6addr, ip6_ulapref, 16);
+	ifptr->if_ip6ucast[index2].ip6addr[1] = index;
+
+	memcpy(ifptr->if_ip6ucast[index2].ip6addr + 2, ifptr->if_macucast , ETH_ADDR_LEN - 2);
+	ifptr->if_ip6ucast[index2].ip6addr[6] = index;
+	ifptr->if_nipucast++;
+
+	return;
+
+}
 
 /*----------------------------------------------
  * ip6llgen : Generate a link local IPv6 address 
@@ -62,7 +82,7 @@ status ip6_snmaddrgen(int32 inducast, struct ifentry *ifptr)
 	
 	memcpy(ifptr->if_ip6mcast[index].ip6addr, ip6_nd_snmpref, 16);
 	memcpy(ifptr->if_ip6mcast[index].ip6addr + 13, ifptr->if_ip6ucast[inducast].ip6addr +13, 3);
-	ip6addr_print(ifptr->if_ip6mcast[index].ip6addr);
+	//ip6addr_print(ifptr->if_ip6mcast[index].ip6addr);
 
 	ifptr->if_nipmcast++;
 	return OK;
@@ -81,6 +101,16 @@ status ip6_nwmcast_gen(int32 indmcast, struct ifentry *ifptr)
 	memcpy(ifptr->if_ip6newmcast[indmcast].if_ip6nwmcast + 2, ifptr->if_ip6mcast[indmcast].ip6addr + 12, 4);
 
 	return OK;
+}
+
+/* ip6_mcrouter: Generate all router multicast address */
+status ip6_mcrouter_gen(struct ifentry *ifptr)
+{
+	int index = ifptr->if_nipmcast;
+	memcpy(ifptr->if_ip6mcast[index].ip6addr, ip6_allroutermc, 16);
+	ifptr->if_nipmcast++;
+	return OK;
+
 }
 
 
@@ -117,10 +147,10 @@ void ip6_in(struct netpacket *pktptr)
 
 	}
 
-	
+	ip6addr_print(pktptr->net_ip6dst);
 	ifptr = &if_tab[pktptr->net_iface];
 
-	/* Match IPv6 destination address with our unicast ot multicast address */
+	/* Match IPv6 destination address with our unicast, multicast address, or ULA */
 	if(!isipmc(pktptr->net_ip6dst))
 	{
 		for(i=0; i < ifptr->if_nipucast; i++)
@@ -128,14 +158,16 @@ void ip6_in(struct netpacket *pktptr)
 			/* Compare our IPv6 unicast address with packet destination address */
 			if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
 			{
+				kprintf("found ip\n");
+				ip6addr_print(pktptr->net_ip6dst);
 				break;
 
 			}
 
+
 		}
 		if(i >= ifptr->if_nipucast)
 		{
-
 			restore(mask);
 			return;
 
@@ -155,7 +187,7 @@ void ip6_in(struct netpacket *pktptr)
 		}
 		if(i >= ifptr->if_nipmcast)
 		{
-
+		
 			restore(mask);
 			return;
 
@@ -202,6 +234,7 @@ void ip6_in_ext(struct netpacket *pktptr)
 				return;
 
 			case IP6_EXT_ICMP:
+				//kprintf("ICMP IN\n");
 				icmp6_in(pktptr);
 				return;
 			default:
@@ -257,6 +290,76 @@ status ip6addr_reso(struct netpacket *pktptr)
 
 }
 
+status ip6_route(struct netpacket *pktptr, byte nxthop[16])
+{
+	int32 i;
+
+	int32 preflen;
+	struct nd_routertbl *rtblptr;
+
+	struct ifentry *ifptr;
+
+	ifptr = &if_tab[ifprime];
+	/* Check the destination address is Unique local address */
+	if(isipula(pktptr->net_ip6dst))
+	{
+
+		/* Destination host is in the same subnet of the current host */
+		if(ifprime  == pktptr->net_ip6dst[6])
+		{
+
+
+			return;
+		}
+
+	}
+
+
+	if(isipmc(pktptr->net_ip6dst))
+	{
+
+
+		kprintf("Multicast Address\n");
+
+		return OK;
+
+
+
+	}
+
+	if(isipllu(pktptr->net_ip6dst))
+	{
+		kprintf("Link Local Address\n");
+		return OK;
+
+	}
+	
+	//ip6addr_print(pktptr->net_ip6dst);
+	//kprintf("after print\n");
+	for(i=0; i< ND_ROUTETAB_SIZE;i++)
+	{
+
+		rtblptr = &ndroute_tab[i];
+		preflen = rtblptr->ipaddr.preflen;
+		preflen = preflen/8;
+	
+		
+		if((memcmp(pktptr->net_ip6dst, rtblptr->nd_prefix, 16) == 0) && rtblptr->state == RT_STATE_USED);
+		{
+
+			//ip6addr_print(rtblptr->nd_prefix);
+		
+			//ip6addr_print(rtblptr->ipaddr.ip6addr);
+			kprintf("Entry Found %d:%d\n", i, preflen);
+			break;
+
+		}
+
+	}
+	return OK;
+
+}
+
 
 status ip6_send(struct netpacket *pktptr)
 {
@@ -270,6 +373,7 @@ status ip6_send(struct netpacket *pktptr)
 	struct ifentry  *ifptr; 
 	struct nd_nbcentry *nbcptr;
 	int32 ncindex;
+	byte nxthop[16];
 	switch(pktptr->net_ip6nh)
 	{
 
@@ -284,8 +388,12 @@ status ip6_send(struct netpacket *pktptr)
 
 	/* Next Hop determination */
 
+	//ip6addr_print(pktptr->net_ip6dst);
+	retval = ip6_route(pktptr, nxthop);
 	/* Resolve an IPv6 Address to a Layer 2 address */
+	
 	retval = ip6addr_reso(pktptr);
+	//kprintf("retval %d\n", retval);
         if(retval == SYSERR)
 	{
 		/* NB discovery should be done */
@@ -306,6 +414,7 @@ status ip6_send(struct netpacket *pktptr)
 	}
 	else
 	{
+
 		nbcptr = &nbcache_tab[retval];
 
 		ifptr = &if_tab[pktptr->net_iface];
@@ -325,7 +434,7 @@ status ip6_send(struct netpacket *pktptr)
 		}
 		else if(pktptr->net_iface == 1)
 		{
-	
+				
 			ifptr = &if_tab[1];
 			pktptr->net_dst[0]=  ifptr->if_macbcast[0];
 			pktptr->net_dst[1] = ifptr->if_macbcast[1];
@@ -401,3 +510,26 @@ void ip6addr_print(byte *ip6addr)
 	kprintf("\n");
 
 }
+
+
+
+/* -----------------------------------------------------------
+ * ip6addr_print_ping : Print IPv6 address for ping6
+ * ---------------------------------------------------------*/
+void ip6addr_print_ping(byte *ip6addr)
+{
+	//kprintf("\n");
+	int32	i;
+	uint16	*ptr16;
+
+	ptr16 = (uint16 *)ip6addr;
+
+	for(i = 0; i < 7; i++) {
+		kprintf("%04X:", htons(*ptr16));
+		ptr16++;					
+	}
+	kprintf("%04X", htons(*ptr16));
+	
+}
+
+
