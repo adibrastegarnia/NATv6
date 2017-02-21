@@ -40,6 +40,7 @@ void ip6ula_gen(int32 index, struct ifentry *ifptr)
 
 	memcpy(ifptr->if_ip6ucast[index2].ip6addr + 2, ifptr->if_macucast , ETH_ADDR_LEN - 2);
 	ifptr->if_ip6ucast[index2].ip6addr[6] = index;
+	ifptr->if_ip6ucast[index2].preflen = 2;
 	ifptr->if_nipucast++;
 
 	return;
@@ -139,6 +140,7 @@ void ip6_in(struct netpacket *pktptr)
 	}
 
 	
+	
 	/* Check the interface is valid or not */
 	if(pktptr->net_iface < 0 || pktptr->net_iface > NIFACES)
 	{
@@ -147,29 +149,39 @@ void ip6_in(struct netpacket *pktptr)
 
 	}
 
-	ip6addr_print(pktptr->net_ip6dst);
+
+
+	//ip6addr_print(pktptr->net_ip6dst);
 	ifptr = &if_tab[pktptr->net_iface];
 
 	/* Match IPv6 destination address with our unicast, multicast address, or ULA */
 	if(!isipmc(pktptr->net_ip6dst))
 	{
-		for(i=0; i < ifptr->if_nipucast; i++)
+		if(host)
 		{
-			/* Compare our IPv6 unicast address with packet destination address */
-			if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
+			for(i=0; i < ifptr->if_nipucast; i++)
 			{
-				kprintf("found ip\n");
-				ip6addr_print(pktptr->net_ip6dst);
+				/* Compare our IPv6 unicast address with packet destination address */
+				if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
+				{
+				//kprintf("found ip\n");
+				//ip6addr_print(pktptr->net_ip6dst);
 				break;
-
+				}
+				if(i >= ifptr->if_nipucast)
+				{
+					restore(mask);
+					return;
+				}
 			}
-
-
 		}
-		if(i >= ifptr->if_nipucast)
+		else
 		{
+
+			nat_in(pktptr);
 			restore(mask);
 			return;
+
 
 		}
 	}
@@ -195,7 +207,9 @@ void ip6_in(struct netpacket *pktptr)
 
 	}
 
+
 	/* Process the extension headers */
+	
 	ip6_in_ext((struct netpacket *)pktptr);
 	restore(mask);
 	return;
@@ -294,8 +308,14 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 {
 	int32 i;
 
+	int32 ncindex;
 	int32 preflen;
 	struct nd_routertbl *rtblptr;
+
+	uint32 iplen;
+
+	//struct ifentry  *ifptr; 
+	struct nd_nbcentry *nbcptr;
 
 	struct ifentry *ifptr;
 
@@ -307,10 +327,12 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 		/* Destination host is in the same subnet of the current host */
 		if(ifprime  == pktptr->net_ip6dst[6])
 		{
+			memcpy(nxthop, pktptr->net_ip6dst, 16);
 
 
 			return;
 		}
+		/* Destination host is not in the same subnet */
 
 	}
 
@@ -318,39 +340,93 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 	if(isipmc(pktptr->net_ip6dst))
 	{
 
+	        memcpy(nxthop, pktptr->net_ip6dst, 16);
 
-		kprintf("Multicast Address\n");
 
 		return OK;
-
-
 
 	}
 
 	if(isipllu(pktptr->net_ip6dst))
 	{
-		kprintf("Link Local Address\n");
+
+		memcpy(nxthop, pktptr->net_ip6dst, 16);
+
 		return OK;
 
 	}
-	
+
+	//kprintf("ip route is called\n");
 	//ip6addr_print(pktptr->net_ip6dst);
 	//kprintf("after print\n");
+	byte ipdst[16];
+	byte ipprefix[16];
 	for(i=0; i< ND_ROUTETAB_SIZE;i++)
 	{
 
 		rtblptr = &ndroute_tab[i];
+
 		preflen = rtblptr->ipaddr.preflen;
 		preflen = preflen/8;
 	
-		
-		if((memcmp(pktptr->net_ip6dst, rtblptr->nd_prefix, 16) == 0) && rtblptr->state == RT_STATE_USED);
+
+		memset(ipdst, 0, 16);
+		memset(ipprefix, 0, 16);
+		memcpy(ipprefix, rtblptr->nd_prefix, preflen);
+		memcpy(ipdst, pktptr->net_ip6dst, preflen);
+
+		//ip6addr_print(pktptr->net_ip6src);
+		//ip6addr_print(ipdst);
+
+		//kprintf("===============");
+		//ip6addr_print(ipprefix);
+		if((memcmp((const void *)ipdst, (const void *)ipprefix, preflen) == 0) && rtblptr->state == RT_STATE_USED)
 		{
 
-			//ip6addr_print(rtblptr->nd_prefix);
-		
+			//ip6addr_print(rtblptr->nd_prefix);	
 			//ip6addr_print(rtblptr->ipaddr.ip6addr);
-			kprintf("Entry Found %d:%d\n", i, preflen);
+			int32 retval = nd_ncfindip(rtblptr->ipaddr.ip6addr);
+			memcpy(nxthop, rtblptr->ipaddr.ip6addr, 16);
+
+			if(retval == SYSERR)
+			{
+				ncindex = nd_ncnew(nxthop, NULL, 
+				pktptr->net_iface, NB_REACH_INC, 0);
+				
+				/* insert packet into the queue */
+				nd_ncq_insert(pktptr, ncindex);
+				
+				/* Sending neighbor solicitation message */
+				nd_ns_send(ncindex);
+				
+				//kprintf("Entry Found %d:%d\n", i, preflen);
+
+			}
+			else
+			{
+
+				kprintf("Send the packet\n");
+				nbcptr = &nbcache_tab[retval];
+				ifptr = &if_tab[pktptr->net_iface];
+				memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
+				
+				if(!isipmc(pktptr->net_ip6dst))
+				{
+					memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+				
+				}
+				pktptr->net_type = htons(ETH_IPv6);
+				ip6_hton(pktptr);
+				iplen =  40 + ntohs(pktptr->net_ip6len);
+				retval = write(ETHER0, (char *)pktptr, 14 + iplen);
+
+
+
+			}
+
+
+
+
 			break;
 
 		}
@@ -369,6 +445,7 @@ status ip6_send(struct netpacket *pktptr)
 	mask = disable();
 	int32 retval;
 	uint32 iplen;
+	bool8 nxthop_flag;
 	uint16 chksm;
 	struct ifentry  *ifptr; 
 	struct nd_nbcentry *nbcptr;
@@ -390,78 +467,83 @@ status ip6_send(struct netpacket *pktptr)
 
 	//ip6addr_print(pktptr->net_ip6dst);
 	retval = ip6_route(pktptr, nxthop);
+	
 	/* Resolve an IPv6 Address to a Layer 2 address */
 	
-	retval = ip6addr_reso(pktptr);
-	//kprintf("retval %d\n", retval);
-        if(retval == SYSERR)
+
+	if(memcmp(pktptr->net_ip6dst, nxthop , 16) == 0)
 	{
-		/* NB discovery should be done */
-		/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
-		ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
+		retval = ip6addr_reso(pktptr);
+		if(retval == SYSERR)
+		{
+			/* NB discovery should be done */
+			/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
+			ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
 				pktptr->net_iface, NB_REACH_INC, 0);
-
-		/* insert packet into the queue */
-		nd_ncq_insert(pktptr, ncindex);
-
-		/* Sending neighbor solicitation message */
-		nd_ns_send(ncindex);
-	
-
-		restore(mask);
-		return SYSERR;
-
-	}
-	else
-	{
-
-		nbcptr = &nbcache_tab[retval];
-
-		ifptr = &if_tab[pktptr->net_iface];
-		memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
-
-		if(!isipmc(pktptr->net_ip6dst))
-		{
-			memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
-		
+			
+			/* insert packet into the queue */
+			nd_ncq_insert(pktptr, ncindex);
+			
+			
+			/* Sending neighbor solicitation message */
+			nd_ns_send(ncindex);
+			
+			restore(mask);
+			return SYSERR;
 		}
-		else if(pktptr->net_iface == 0)
+		else
 		{
-			pktptr->net_dst[0] = 0x33;
-			pktptr->net_dst[1] = 0x33;
-			memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
+			nbcptr = &nbcache_tab[retval];
 
-		}
-		else if(pktptr->net_iface == 1)
-		{
+			ifptr = &if_tab[pktptr->net_iface];
+			memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
+			
+			
+			if(!isipmc(pktptr->net_ip6dst))
+			{
+				memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+			}
+			
+			else if(pktptr->net_iface == 0)
+			
+			{
+				pktptr->net_dst[0] = 0x33;
+				pktptr->net_dst[1] = 0x33;
+				memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
+			
+			
+			}
+			
+			else if(pktptr->net_iface == 1)
+			{
+				ifptr = &if_tab[1];
 				
-			ifptr = &if_tab[1];
-			pktptr->net_dst[0]=  ifptr->if_macbcast[0];
-			pktptr->net_dst[1] = ifptr->if_macbcast[1];
-			pktptr->net_dst[2] = ifptr->if_macbcast[2];
-			pktptr->net_dst[3] = ifptr->if_macbcast[3];
-			pktptr->net_dst[4] = ifptr->if_macbcast[4];
-			pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
+				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
+				pktptr->net_dst[1] = ifptr->if_macbcast[1];
+				pktptr->net_dst[2] = ifptr->if_macbcast[2];
+				pktptr->net_dst[3] = ifptr->if_macbcast[3];
+				pktptr->net_dst[4] = ifptr->if_macbcast[4];
+				pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
+			}
+			else if(pktptr->net_iface == 2)
+			{
+				
+				ifptr = &if_tab[2];
+				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
+				pktptr->net_dst[1] = ifptr->if_macbcast[1];
+				pktptr->net_dst[2] = ifptr->if_macbcast[2];
+				pktptr->net_dst[3] = ifptr->if_macbcast[3];
+				pktptr->net_dst[4] = ifptr->if_macbcast[4];
+				pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
+			}
+			pktptr->net_type = htons(ETH_IPv6);
+			ip6_hton(pktptr);
+			iplen =  40 + ntohs(pktptr->net_ip6len);
+			retval = write(ETHER0, (char *)pktptr, 14 + iplen);
 		}
-		else if(pktptr->net_iface == 2)
-		{
-			ifptr = &if_tab[2];
-			pktptr->net_dst[0]=  ifptr->if_macbcast[0];
-			pktptr->net_dst[1] = ifptr->if_macbcast[1];
-			pktptr->net_dst[2] = ifptr->if_macbcast[2];
-			pktptr->net_dst[3] = ifptr->if_macbcast[3];
-			pktptr->net_dst[4] = ifptr->if_macbcast[4];
-			pktptr->net_dst[5] = ifptr->if_macbcast[5]; 
-
-		}
-
-
-		pktptr->net_type = htons(ETH_IPv6);
-		ip6_hton(pktptr);
-		iplen =  40 + ntohs(pktptr->net_ip6len);
-		retval = write(ETHER0, (char *)pktptr, 14 + iplen);
 
 	}
+	
 	freebuf((char *)pktptr);
 	restore(mask);
 	return retval;

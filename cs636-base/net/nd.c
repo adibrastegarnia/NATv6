@@ -439,11 +439,11 @@ status nd_ns_send(int32 ncindex)
 
 	if(nbcptr->nc_reachstate == NB_REACH_INC)
 	{
-		//kprintf("Incomplete state\n");
+		
 		memcpy(ipdst, ip6_nd_snmpref, 16);
 		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
+		//memcpy(ipdst + 13, if_tab[nbcptr->nc_iface].if_ip6ucast[0].ip6addr + 13, 3);
 		//ip6addr_print(ipdst);
-
 	}
 	else
 	{
@@ -480,10 +480,15 @@ void nd_in_nam(struct netpacket *pktptr)
         nboptptr = (struct nd_opt *)nbadvptr->nd_opts;
 
 
+	
 	/* the Neighbor Cache is searched for the target's entry */
 	retval = nd_ncfindip(pktptr->net_ip6src);
+
+	//ip6addr_print(pktptr->net_ip6src);
 	if(retval == SYSERR)
 	{
+
+	
 
 		return;
 	}
@@ -491,7 +496,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	nbcptr = &nbcache_tab[retval];
 	int32 rstate = nbcptr->nc_reachstate;
 
-	kprintf("rstate nd_in_nam:%d\n", rstate);
+	//kprintf("rstate nd_in_nam:%d\n", rstate);
 	switch(rstate)
 	{
 
@@ -812,9 +817,9 @@ void nd_ram_in(struct netpacket *pktptr)
 	}
 
 
-	ip6addr_print(pktptr->net_ip6src);
+	//ip6addr_print(pktptr->net_ip6src);
 	//kprintf("nd pref len %d\n", (ndoptptr->nd_preflen));
-	ip6addr_print(ndoptptr->nd_prefix);
+	//ip6addr_print(ndoptptr->nd_prefix);
  	
 	
 	restore(mask);

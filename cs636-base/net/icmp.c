@@ -52,7 +52,7 @@ void icmp6_in(struct netpacket *pktptr)
 		
 		/* ICMP Echo request */
 		case ICMP6_ECHREQ_TYPE:
-			//kprintf("ICMP Echo request\n");
+			kprintf("ICMP Echo request\n");
 			icmp6_send(pktptr->net_ip6src, 
 					ICMP6_ECHRES_TYPE, 0,
 					pktptr->net_icdata,
@@ -103,13 +103,13 @@ void icmp6_in(struct netpacket *pktptr)
 
 		/* ICMP Neighbour Soliciation Message */
 		case ICMP6_NSM_TYPE:
-			kprintf("ICMP6 Neighbor Solicitation message\n");
+			//kprintf("ICMP6 Neighbor Solicitation message\n");
 			nd_in(pktptr);
 			break;
 
 		/* ICMP Neighbour Advertisment Message */
 		case ICMP6_NAM_TYPE:
-			kprintf("ICMP6 neighbor Advertisment message\n");
+			//kprintf("ICMP6 neighbor Advertisment message\n");
 			nd_in(pktptr);
 			break;
 
@@ -152,15 +152,51 @@ struct netpacket *icmp_mkpkt(byte remip[],
 	memcpy(pkt->net_ip6dst, remip, 16);
 
         ifptr = &if_tab[iface];
-	memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
 
+	if(isipula(remip))
+	{
+
+		memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[1].ip6addr, 16);
+
+	}
+	else if(isipmc(remip))
+	{
+
+
+
+		//`memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
+
+
+		if(!memcmp(remip + 13, ip6_ulapref + 3 , 3))
+		{
+	
+			memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[1].ip6addr, 16);
+		}
+		else
+		{
+
+			memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
+			//kprintf("multicast\n");
+			//ip6addr_print(remip);
+			//kprintf("=============\n");
+
+
+
+		}
+
+	}
+	else if(isipllu(remip))
+	{
+		memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
+
+	}
 	//kprintf("ICTYPE %d\n", ictype);
 	pkt->net_ictype = ictype;
 	pkt->net_iccode = iccode;
 	pkt->net_icchksm = 0x0000;
 	memcpy(pkt->net_icdata, icdata, datalen);
 
-
+	
 	/* return packet to the caller */
 
 	restore(mask);

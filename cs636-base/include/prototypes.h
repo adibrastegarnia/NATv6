@@ -186,6 +186,10 @@ extern	void	eth_hton(struct netpacket *);
 extern	void	eth_ntoh(struct netpacket *);
 extern	uint16	getport(void);
 
+/* in file nat.c */
+extern void nat_in(struct netpacket *);
+extern void nat_init();
+
 /* in file kill.c */
 extern	syscall	kill(pid32);
 

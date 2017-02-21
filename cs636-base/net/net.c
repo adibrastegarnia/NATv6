@@ -220,6 +220,8 @@ void	net_init (void)
 	ip6_snmaddrgen(1 , ifptr);
 
 	ip6_nwmcast_gen(0, ifptr);
+	ip6_nwmcast_gen(1, ifptr);
+
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 
 	ip6ula_gen(0, ifptr);
@@ -227,6 +229,8 @@ void	net_init (void)
 
 
         control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[0].if_ip6nwmcast, 0);
+
+	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_ip6newmcast[1].if_ip6nwmcast, 0);
 
 	/* Othernet 1 */
 	
@@ -296,11 +300,6 @@ void	net_init (void)
 	ip6addr_print(ifptr->if_ip6ucast[1].ip6addr);
 
 
-	if(!host)
-	{
-		ip6_mcrouter_gen(ifptr);
-
-	}
 	
 	if (host) {
 		printf("\nRunning host on %s\n", if_tab[ifprime].if_name);
@@ -324,8 +323,16 @@ void	net_init (void)
 		sprintf(pname, "net%d_input", iface);
 		resume(create(netin, 4196, 5000, pname, 1, iface));
 	}
+
+	
 	nd_init();
 
+	if(!host)
+	{
+		ip6_mcrouter_gen(ifptr);
+		nat_init();
+
+	}
 	if(host)
 	{
 		nd_rs_send(ifprime);
@@ -381,7 +388,8 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
-			//kprintf("IP6\n");
+			kprintf("IP6\n");
+			ip6addr_print(pkt->net_ip6dst);
 			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);
 			continue;

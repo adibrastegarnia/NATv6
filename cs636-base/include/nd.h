@@ -151,6 +151,7 @@ struct nd_routertbl{
 	bool8 nd_onlink;
 	int32 state;
         struct ifip6addr ipaddr; 
+	int32 iface;
 	
 
 };
