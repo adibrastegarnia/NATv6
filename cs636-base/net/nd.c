@@ -486,7 +486,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	retval = nd_ncfindip(nbadvptr->nd_trgtaddr);
 
 	kprintf("IN NAM\n");
-	ip6addr_print(nbadvptr->nd_trgtaddr);
+	//ip6addr_print(nbadvptr->nd_trgtaddr);
 	if(retval == SYSERR)
 	{
 

@@ -56,7 +56,7 @@ void nat_in(struct netpacket *pktptr)
 	struct	ifentry *ifptr; 	/* Network interface pointer	*/
 
         mask = disable();
-	ip6_ntoh(pktptr);
+	//ip6_ntoh(pktptr);
 
 	/* Check IPv6 version */
 	if(((pktptr->net_ip6ver) & 0xf0) != 0x60)
