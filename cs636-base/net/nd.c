@@ -444,6 +444,7 @@ status nd_ns_send(int32 ncindex)
 		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
 		//memcpy(ipdst + 13, if_tab[nbcptr->nc_iface].if_ip6ucast[0].ip6addr + 13, 3);
 		//ip6addr_print(ipdst);
+		ip6addr_print(ipdst);
 	}
 	else
 	{
@@ -482,9 +483,10 @@ void nd_in_nam(struct netpacket *pktptr)
 
 	
 	/* the Neighbor Cache is searched for the target's entry */
-	retval = nd_ncfindip(pktptr->net_ip6src);
+	retval = nd_ncfindip(nbadvptr->nd_trgtaddr);
 
-	//ip6addr_print(pktptr->net_ip6src);
+	kprintf("IN NAM\n");
+	ip6addr_print(nbadvptr->nd_trgtaddr);
 	if(retval == SYSERR)
 	{
 

@@ -164,27 +164,12 @@ struct netpacket *icmp_mkpkt(byte remip[],
 
 
 
-		//`memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
-
-
-		if(!memcmp(remip + 13, ip6_ulapref + 3 , 3))
-		{
-	
-			memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[1].ip6addr, 16);
-		}
-		else
-		{
-
 			memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
-			//kprintf("multicast\n");
-			//ip6addr_print(remip);
-			//kprintf("=============\n");
-
-
-
-		}
+		
 
 	}
+
+
 	else if(isipllu(remip))
 	{
 		memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);

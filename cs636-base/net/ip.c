@@ -375,16 +375,9 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 		memcpy(ipprefix, rtblptr->nd_prefix, preflen);
 		memcpy(ipdst, pktptr->net_ip6dst, preflen);
 
-		//ip6addr_print(pktptr->net_ip6src);
-		//ip6addr_print(ipdst);
-
-		//kprintf("===============");
-		//ip6addr_print(ipprefix);
 		if((memcmp((const void *)ipdst, (const void *)ipprefix, preflen) == 0) && rtblptr->state == RT_STATE_USED)
 		{
 
-			//ip6addr_print(rtblptr->nd_prefix);	
-			//ip6addr_print(rtblptr->ipaddr.ip6addr);
 			int32 retval = nd_ncfindip(rtblptr->ipaddr.ip6addr);
 			memcpy(nxthop, rtblptr->ipaddr.ip6addr, 16);
 
@@ -405,7 +398,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 			else
 			{
 
-				kprintf("Send the packet\n");
+				//kprintf("Send the packet\n");
 				nbcptr = &nbcache_tab[retval];
 				ifptr = &if_tab[pktptr->net_iface];
 				memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
