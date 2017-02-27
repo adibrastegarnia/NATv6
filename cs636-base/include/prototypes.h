@@ -176,6 +176,7 @@ extern status ip6addr_reso(struct netpacket *);
 extern status ip6_mcrouter_gen(struct ifentry *);
 extern void   ip6ula_gen(int32, struct ifentry *);
 extern void    ip6addr_print_ping(byte *);
+extern void    hwaddr_print_ping(byte *);
 extern status ip6_route(struct netpacket *, byte[]);
 
 /* in file net.c */

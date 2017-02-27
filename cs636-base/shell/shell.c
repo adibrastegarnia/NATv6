@@ -32,6 +32,8 @@ const	struct	cmdent	cmdtab[] = {
 	{"uptime",	FALSE,	xsh_uptime},
 	{"?",		FALSE,	xsh_help},
 	{"ping6",      FALSE,  xsh_ping6},
+	{"nc",      FALSE,  xsh_nc},
+	{"rt",      FALSE,  xsh_rt},
 	{"routes", FALSE, xsh_route}
 
 };

@@ -46,6 +46,9 @@ extern	shellcmd  xsh_memstat	(int32, char *[]);
 /* in file xsh_netinfo.c */
 extern	shellcmd  xsh_netinfo	(int32, char *[]);
 
+/* in file xsh_nc.c */
+extern	shellcmd  xsh_nc	(int32, char *[]);
+
 /* in file xsh_nvram.c */
 extern	shellcmd  xsh_nvram	(int32, char *[]);
 
@@ -57,6 +60,9 @@ extern	shellcmd  xsh_pdump	(int32, char *[]);
 
 /* in file xsh_ps.c */
 extern	shellcmd  xsh_ps	(int32, char *[]);
+
+/* in file xsh_rt.c */
+extern	shellcmd  xsh_rt	(int32, char *[]);
 
 /* in file xsh_sleep.c */
 extern	shellcmd  xsh_sleep	(int32, char *[]);

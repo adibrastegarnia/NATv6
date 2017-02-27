@@ -151,7 +151,7 @@ void ip6_in(struct netpacket *pktptr)
 
 
 
-	//ip6addr_print(pktptr->net_ip6dst);
+	ip6addr_print(pktptr->net_ip6dst);kprintf(" is IP_IN dest addr");
 	ifptr = &if_tab[pktptr->net_iface];
 
 	/* Match IPv6 destination address with our unicast, multicast address, or ULA */
@@ -164,12 +164,12 @@ void ip6_in(struct netpacket *pktptr)
 				/* Compare our IPv6 unicast address with packet destination address */
 				if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
 				{
-				//kprintf("found ip\n");
+				//kprintf("found ip for host\n");
 				//ip6addr_print(pktptr->net_ip6dst);
 				break;
 				}
 				if(i >= ifptr->if_nipucast)
-				{
+				{kprintf("dest ip not found\n");
 					restore(mask);
 					return;
 				}
@@ -248,7 +248,7 @@ void ip6_in_ext(struct netpacket *pktptr)
 				return;
 
 			case IP6_EXT_ICMP:
-				//kprintf("ICMP IN\n");
+				kprintf("ICMP IN\n");
 				icmp6_in(pktptr);
 				return;
 			default:
@@ -325,13 +325,14 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 	{
 
 		/* Destination host is in the same subnet of the current host */
-		if(ifprime  == pktptr->net_ip6dst[6])
-		{
+		//TODO: Check if this check i theoretically correct: practically is correct
+		/*if((ifprime  == pktptr->net_ip6dst[6]) || (!host))
+		{*/
 			memcpy(nxthop, pktptr->net_ip6dst, 16);
 
 
 			return;
-		}
+		//}
 		/* Destination host is not in the same subnet */
 
 	}
@@ -356,7 +357,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 
 	}
 
-	//kprintf("ip route is called\n");
+	kprintf("ip route is called\n");
 	//ip6addr_print(pktptr->net_ip6dst);
 	//kprintf("after print\n");
 	byte ipdst[16];
@@ -457,18 +458,20 @@ status ip6_send(struct netpacket *pktptr)
 	}
 
 	/* Next Hop determination */
-
-	//ip6addr_print(pktptr->net_ip6dst);
+	kprintf("Dest in IPsend:");
+	ip6addr_print(pktptr->net_ip6dst);
 	retval = ip6_route(pktptr, nxthop);
 	
 	/* Resolve an IPv6 Address to a Layer 2 address */
 	
-
+	kprintf("\nNext Hop in IPsend:");
+	ip6addr_print(nxthop);
 	if(memcmp(pktptr->net_ip6dst, nxthop , 16) == 0)
 	{
+		kprintf("nxthop is destip\n");
 		retval = ip6addr_reso(pktptr);
 		if(retval == SYSERR)
-		{
+		{kprintf("destip NOT in NC\n");
 			/* NB discovery should be done */
 			/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
 			ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
@@ -485,7 +488,7 @@ status ip6_send(struct netpacket *pktptr)
 			return SYSERR;
 		}
 		else
-		{
+		{		kprintf("destip in NC\n");
 			nbcptr = &nbcache_tab[retval];
 
 			ifptr = &if_tab[pktptr->net_iface];
@@ -571,7 +574,7 @@ void ip6_hton(struct netpacket *pktptr)
  * ---------------------------------------------------------*/
 void ip6addr_print(byte *ip6addr)
 {
-	kprintf("\n");
+//	kprintf("\n");
 	int32	i;
 	uint16	*ptr16;
 
@@ -581,15 +584,15 @@ void ip6addr_print(byte *ip6addr)
 		kprintf("%04X:", htons(*ptr16));
 		ptr16++;					
 	}
-	kprintf("%04X", htons(*ptr16));
-	kprintf("\n");
+	kprintf("%04X \n", htons(*ptr16));
+//	kprintf("\n");
 
 }
 
 
 
 /* -----------------------------------------------------------
- * ip6addr_print_ping : Print IPv6 address for ping6
+ * ip6addr_print_ping : Print IPv6 address for ping6 and nc commands
  * ---------------------------------------------------------*/
 void ip6addr_print_ping(byte *ip6addr)
 {
@@ -607,4 +610,21 @@ void ip6addr_print_ping(byte *ip6addr)
 	
 }
 
+/* -----------------------------------------------------------
+ * hwaddr_print_ping : Print hw address for nc command
+ * ---------------------------------------------------------*/
+void hwaddr_print_ping(byte *hwaddr)
+{
+	//kprintf("\n");
+	int32	i;
+	uint8	*ptr8;
 
+	ptr8 = (uint8 *)hwaddr;
+
+	for(i = 0; i < ETH_ADDR_LEN; i++) {
+		kprintf("%02X:", *ptr8);
+		ptr8++;					
+	}
+	kprintf("%02X", *ptr8);
+	
+}

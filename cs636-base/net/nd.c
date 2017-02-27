@@ -551,7 +551,7 @@ void nd_in_nam(struct netpacket *pktptr)
 
 					}
 					break;
-				default:
+				default:kprintf("DEFAULT STATE\n");
 					return;
 			}
 

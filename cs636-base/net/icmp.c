@@ -60,7 +60,8 @@ void icmp6_in(struct netpacket *pktptr)
 					pktptr->net_iface);
 			break;
 
-		case ICMP6_ECHRES_TYPE:
+		case ICMP6_ECHRES_TYPE:kprintf("ICMP Echo response\n");
+
 			/* Handle Echo Reply message: verify that ID is valid */
 			mask = disable();
 			tRecv = hpet->mcv_l;
@@ -366,7 +367,7 @@ int32	icmp6_recv (
 	/* Packet has arrived -- dequeue it */
 
 	pkt = icmptr->icqueue[icmptr->ichead++];
-	if (icmptr->ichead >= ICMP_SLOTS) {
+	if (icmptr->ichead >= ICMP_QSIZ) {
 		icmptr->ichead = 0;
 	}
 	icmptr->iccount--;

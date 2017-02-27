@@ -57,7 +57,7 @@ void nat_in(struct netpacket *pktptr)
 
         mask = disable();
 	//ip6_ntoh(pktptr);
-
+kprintf("nat in\n");
 	/* Check IPv6 version */
 	if(((pktptr->net_ip6ver) & 0xf0) != 0x60)
 	{
@@ -92,7 +92,7 @@ void nat_in(struct netpacket *pktptr)
 				if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
 				{
 				kprintf("found ip\n");
-				ip6addr_print(pktptr->net_ip6dst);
+				//ip6addr_print(pktptr->net_ip6dst);
 				break;
 				}
 				if(i >= ifptr->if_nipucast)
@@ -132,7 +132,7 @@ void nat_in(struct netpacket *pktptr)
 	restore(mask);
 
 
-	
+	/* Should we proceed after this point?*/
 	
 	
 	
