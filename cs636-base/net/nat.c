@@ -171,7 +171,9 @@ void nat_in(struct netpacket *pktptr)
 
 
 
-	
+	return OK;
+
+
 	for(i=0; i < ND_ROUTETAB_SIZE; i++)
 	{
 		rtblptr = &ndroute_tab[i];
