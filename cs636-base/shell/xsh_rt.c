@@ -36,9 +36,6 @@ shellcmd xsh_rt(int nargs, char *args[])
 		return 1;
 	}
 	
-	if(host)	{
-		kprintf("Not a NAT box!");
-	}
 	/* Print header for items from the process table */
 
 	kprintf("\n%5s %5s %8s %6s %5s %6s %7s %7s %7s\n",

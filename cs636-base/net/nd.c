@@ -239,7 +239,7 @@ int32 nd_ncnew(byte *ip6addr,
 
 void nd_in_nsm(struct netpacket *pktptr)
 {
-	
+		kprintf("Received NSM\n");
 	
 	intmask mask;
 	struct nd_nbrsol *nbsolptr;
@@ -397,6 +397,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	//kprintf("\nNeighbor adver sent ip dst: \n");
 	//ip6addr_print(ipdst);
+	kprintf("Send NAM\n");
 	icmp6_send(ipdst, ICMP6_NAM_TYPE, 
 			0 , nbadvrptr,
 			nbadvrlen, 
@@ -444,14 +445,16 @@ status nd_ns_send(int32 ncindex)
 		memcpy(ipdst + 13, nbcptr->nc_nbipucast + 13 , 3);
 		//memcpy(ipdst + 13, if_tab[nbcptr->nc_iface].if_ip6ucast[0].ip6addr + 13, 3);
 		//ip6addr_print(ipdst);
-		ip6addr_print(ipdst);
+		//ip6addr_print(ipdst);
 	}
 	else
 	{
 		memcpy(ipdst, nbcptr->nc_nbipucast, 16);
 
 	}
-
+	kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
+	ip6addr_print_ping(ipdst);
+	kprintf("\n");
         icmp6_send(ipdst, ICMP6_NSM_TYPE, 
 			0 , nbsptr,
 			nslen, 
@@ -485,7 +488,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	/* the Neighbor Cache is searched for the target's entry */
 	retval = nd_ncfindip(nbadvptr->nd_trgtaddr);
 
-	kprintf("IN NAM\n");
+	kprintf("Received NAM\n");
 	//ip6addr_print(nbadvptr->nd_trgtaddr);
 	if(retval == SYSERR)
 	{
@@ -503,7 +506,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	{
 
 		case NB_REACH_INC:
-			kprintf("INCOMPLETE STATE\n");
+			//kprintf("INCOMPLETE STATE\n");
 			switch(nboptptr->nd_type)
 			{
 				case ND_OPT_TLLA:
@@ -565,7 +568,7 @@ void nd_in_nam(struct netpacket *pktptr)
  * -------------------------------------------------*/
 
 status nd_rs_send(int32 iface)
-{
+{	
 	intmask mask;
 	mask = disable();
 
@@ -809,9 +812,9 @@ void nd_ram_in(struct netpacket *pktptr)
 			rtblptr->state = RT_STATE_USED;
 			memcpy(rtblptr->ipaddr.ip6addr, pktptr->net_ip6src,16);
 			rtblptr->ipaddr.preflen = ndoptptr->nd_preflen;
-			memcpy(rtblptr->nd_prefix,ndoptptr->nd_prefix, 16);
+			memcpy(rtblptr->nd_prefix,ndoptptr->nd_prefix, rtblptr->ipaddr.preflen);
 			break;
-			
+
 
 		}
 		 
@@ -833,7 +836,7 @@ void nd_ram_in(struct netpacket *pktptr)
 
 
 /* ------------------------------------------------------
- * nd_in: Handling Neighboud discovery incoming packets 
+ * nd_in: Handling Neighbour discovery incoming packets 
  * -----------------------------------------------------*/
 void nd_in(struct netpacket *pktptr)
 {
@@ -859,8 +862,10 @@ void nd_in(struct netpacket *pktptr)
 		case ICMP6_RDM_TYPE:
 			break;
 		case ICMP6_RSM_TYPE:
-			kprintf("Router Solicitation Message\n");
-			nd_rsm_in(pktptr);
+			if(!host){
+				kprintf("Router Solicitation Message\n");
+				nd_rsm_in(pktptr);
+			}
 			break;
 		
 	}

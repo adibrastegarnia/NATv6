@@ -212,7 +212,7 @@ int32	ethinit (
 		0xff&ethptr->devAddress[2],
 		0xff&ethptr->devAddress[3],
 		0xff&ethptr->devAddress[4],
-		0xff&ethptr->devAddress[5]);
+		0xff&ethptr->devAddress[5]);hwaddr_print_ping(ethptr->devAddress);
 
 	/* Add the MAC address read from SPI flash into the	*/
 	/* macaddr registers for address filtering		*/

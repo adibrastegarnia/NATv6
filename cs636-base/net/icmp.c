@@ -206,7 +206,6 @@ status icmp6_send(byte remip[],
 	int32 retval;
 	/* Disable intruptts */
 	mask = disable();
-
 	/* Create an ICMPv6 packet */
 	pkt = icmp_mkpkt(remip, ictype, iccode, icdata, datalen, iface);
         if((int32)pkt == SYSERR)
@@ -214,7 +213,7 @@ status icmp6_send(byte remip[],
 		return SYSERR;
 
 	}
-
+	kprintf("Send ICMP message \n");
 	/* Send ICMPv6 packet */
 	retval = ip6_send(pkt);
 	restore(mask);
@@ -224,7 +223,7 @@ status icmp6_send(byte remip[],
 }
 
 /*-------------------------------------------------------------
- * icmp6_chksum: Computer ICMPv6 checksum 
+ * icmp6_chksum: Compute ICMPv6 checksum 
  * -----------------------------------------------------------*/
 
 uint16 icmp6_chksum(struct netpacket *pktptr)
