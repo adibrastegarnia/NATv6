@@ -26,7 +26,7 @@ void nat_init()
 				//kprintf("j:%d\n", j);
 				memcpy(rtblptr->ipaddr.ip6addr, ifptr->if_ip6ucast[1].ip6addr,16);
 				rtblptr->ipaddr.preflen = ifptr->if_ip6ucast[1].preflen;
-				memcpy(rtblptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, ifptr->if_ip6ucast[0].preflen);
+				memcpy(rtblptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, ifptr->if_ip6ucast[1].preflen);
 				rtblptr->state = RT_STATE_USED;
 				rtblptr->iface = i;
 				j++;
