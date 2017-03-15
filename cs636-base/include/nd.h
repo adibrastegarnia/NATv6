@@ -112,7 +112,7 @@ struct nd_opt{
 			uint32 nd_vallftime;
 			uint32 nd_preflftime;
 			uint32 nd_res2;
-			byte   nd_prefix[16];
+			byte   nd_prefix[NIFACES-1][16];
 
 		};
 

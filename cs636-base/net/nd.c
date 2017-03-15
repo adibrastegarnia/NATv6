@@ -680,7 +680,7 @@ void nd_rsm_in(struct netpacket *pktptr)
 
 
 
-	int32 roadvrlen = sizeof(struct nd_roadv) + 32;
+	int32 roadvrlen = sizeof(struct nd_roadv) + 32 + 16;
 	roadvptr = (struct nd_roadv *)getmem(roadvrlen);
 	ndoptptr = (struct nd_opt *)roadvptr->nd_opts;
 
@@ -716,15 +716,17 @@ void nd_rsm_in(struct netpacket *pktptr)
 	if(pktptr->net_iface == 1)
 	{
 
+		ifptr = &if_tab[0];
+		memcpy(ndoptptr->nd_prefix[0], ifptr->if_ip6ucast[1].ip6addr, 2);
 		ifptr = &if_tab[2];
-		memcpy(ndoptptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, 2);
-
+		memcpy(ndoptptr->nd_prefix[1], ifptr->if_ip6ucast[1].ip6addr, 2);
 	}
 	else
 	{
+		ifptr = &if_tab[0];
+		memcpy(ndoptptr->nd_prefix[0], ifptr->if_ip6ucast[1].ip6addr, 2);
 		ifptr = &if_tab[1];
-		memcpy(ndoptptr->nd_prefix, ifptr->if_ip6ucast[1].ip6addr, 2);
-
+		memcpy(ndoptptr->nd_prefix[1], ifptr->if_ip6ucast[1].ip6addr, 2);
 	}
 	//ip6addr_print(ndoptptr->nd_prefix);
 
@@ -802,9 +804,9 @@ void nd_ram_in(struct netpacket *pktptr)
 
 
 	/* Update the Prefix List */
-	int32 i;
+	int32 i,j=0;
 	struct nd_routertbl *rtblptr;
-	for(i=0; i< ND_ROUTETAB_SIZE; i++)
+	for(i=0; i< ND_ROUTETAB_SIZE && j<=1; i++)
 	{
 		rtblptr = &ndroute_tab[i];
 		if(rtblptr->state == RT_STATE_FREE)
@@ -812,10 +814,8 @@ void nd_ram_in(struct netpacket *pktptr)
 			rtblptr->state = RT_STATE_USED;
 			memcpy(rtblptr->ipaddr.ip6addr, pktptr->net_ip6src,16);
 			rtblptr->ipaddr.preflen = ndoptptr->nd_preflen;
-			memcpy(rtblptr->nd_prefix,ndoptptr->nd_prefix, rtblptr->ipaddr.preflen);
-			break;
-
-
+			memcpy(rtblptr->nd_prefix,&ndoptptr->nd_prefix[j][0], rtblptr->ipaddr.preflen);
+			j++;
 		}
 		 
 		

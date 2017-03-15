@@ -92,7 +92,7 @@ void nat_in(struct netpacket *pktptr)
 				{
 					kprintf("NAT ucast ip matches destip\n");
 					ip6_in_ext((struct netpacket *)pktptr);
-					break;
+					return;
 				}
 			}
 			/* The unicast dest ip was not the NAT ip, so continue to forward.*/
