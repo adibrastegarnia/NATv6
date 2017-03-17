@@ -152,13 +152,13 @@ void nat_in(struct netpacket *pktptr)
 				/* NAT box's i interface has the same prefix as the dest ip */
 				pktptr->net_iface = i;
 
-/*Update checksum*/
-		switch(pktptr->net_ip6nh)
-	{
-		case IP_ICMP6:
-			pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
-			break;
-	}
+				/*Update checksum*/
+				switch(pktptr->net_ip6nh)
+				{
+					case IP_ICMP6:
+					pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
+					break;
+				}
 
 				retval = ip6_send(pktptr);
 				restore(mask);
@@ -170,8 +170,9 @@ void nat_in(struct netpacket *pktptr)
 /*********************************************************/
 
 
-
-	return OK;
+	kprintf("Checking routing table in NAT_in for"); 
+	ip6addr_print_ping(pktptr->net_ip6dst);
+	kprintf("\n");
 
 
 	for(i=0; i < ND_ROUTETAB_SIZE; i++)
@@ -208,8 +209,9 @@ void nat_in(struct netpacket *pktptr)
 				
 				/* Sending neighbor solicitation message */
 				nd_ns_send(ncindex);
-				
-				/* The ND code will take care of sending this packet */
+
+				restore(mask);
+				return SYSERR;
 
 			}
 			else
@@ -238,7 +240,8 @@ void nat_in(struct netpacket *pktptr)
 				iplen =  40 + (pktptr->net_ip6len);
 				//kprintf("ip len in nat in %d\n", iplen);
 				retval = write(ETHER0, (char *)pktptr, 14 + iplen);
-
+				restore(mask);
+				return;
 
 
 			}

@@ -310,9 +310,11 @@ status ip6addr_reso(struct netpacket *pktptr)
 
 }
 
+
+/* Find Nexthop and return*/
 status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 {
-	int32 i;
+	int32 i,defgtway = -1;
 
 	int32 ncindex;
 	int32 preflen;
@@ -400,7 +402,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 				nd_ns_send(ncindex);
 				
 				//kprintf("Entry Found %d:%d\n", i, preflen);
-
+				return OK;
 			}
 			else
 			{
@@ -418,21 +420,77 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 				pktptr->net_type = htons(ETH_IPv6);
 				ip6_hton(pktptr);
 				iplen =  40 + ntohs(pktptr->net_ip6len);
-				retval = write(ETHER0, (char *)pktptr, 14 + iplen);
+				retval = write(ETHER0, (char *)pktptr, ETH_HDR_LEN + iplen);
+
+				return OK;
+
+			}
+
+		}
+		/* If this is not to h1 or h2 , but to some random network which we don't know about, send to Natbox.*/
+		/*Find the first Default gateway and temporarily save it*/
+		if((rtblptr->nd_defgtw == TRUE) && (rtblptr->state == RT_STATE_USED) && (defgtway== -1)){
+			defgtway= i;
+		}
+	}
 
 
+	/* If we haven't returned yet, we did not find an exact match in the routing table; forward to Nat Box*/
+	if(defgtway != -1){
+
+		rtblptr = &ndroute_tab[defgtway];
+
+		preflen = rtblptr->ipaddr.preflen;
+		preflen = preflen/8;
+	
+
+		memset(ipdst, 0, 16);
+		memset(ipprefix, 0, 16);
+		memcpy(ipprefix, rtblptr->nd_prefix, preflen);
+		memcpy(ipdst, pktptr->net_ip6dst, preflen);
+
+			int32 retval = nd_ncfindip(rtblptr->ipaddr.ip6addr);
+			memcpy(nxthop, rtblptr->ipaddr.ip6addr, 16);
+
+			if(retval == SYSERR)
+			{
+				ncindex = nd_ncnew(nxthop, NULL, pktptr->net_iface, NB_REACH_INC, 0);
+				
+				/* insert packet into the queue */
+				nd_ncq_insert(pktptr, ncindex);
+				
+				/* Sending neighbor solicitation message */
+				nd_ns_send(ncindex);
+				
+				//kprintf("Entry Found %d:%d\n", i, preflen);
+				return OK;
+			}
+			else
+			{
+
+				//kprintf("Send the packet\n");
+				nbcptr = &nbcache_tab[retval];
+				ifptr = &if_tab[pktptr->net_iface];
+				memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
+				
+				if(!isipmc(pktptr->net_ip6dst))
+				{
+					memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
+				
+				}
+				pktptr->net_type = htons(ETH_IPv6);
+				ip6_hton(pktptr);
+				iplen =  40 + ntohs(pktptr->net_ip6len);
+				retval = write(ETHER0, (char *)pktptr, ETH_HDR_LEN + iplen);
+
+				return OK;
 
 			}
 
 
 
-
-			break;
-
-		}
-
 	}
-	return OK;
+	return SYSERR;
 
 }
 
@@ -546,7 +604,7 @@ status ip6_send(struct netpacket *pktptr)
 			pktptr->net_type = htons(ETH_IPv6);
 			ip6_hton(pktptr);
 			iplen =  40 + ntohs(pktptr->net_ip6len);
-			retval = write(ETHER0, (char *)pktptr, 14 + iplen);
+			retval = write(ETHER0, (char *)pktptr, ETH_HDR_LEN + iplen);
 		}
 
 	}

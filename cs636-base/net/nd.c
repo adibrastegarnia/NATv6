@@ -815,6 +815,7 @@ void nd_ram_in(struct netpacket *pktptr)
 			memcpy(rtblptr->ipaddr.ip6addr, pktptr->net_ip6src,16);
 			rtblptr->ipaddr.preflen = ndoptptr->nd_preflen;
 			memcpy(rtblptr->nd_prefix,&ndoptptr->nd_prefix[j][0], rtblptr->ipaddr.preflen);
+			rtblptr->nd_defgtw = TRUE;
 			j++;
 		}
 		 
