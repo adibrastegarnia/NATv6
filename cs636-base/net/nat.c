@@ -136,7 +136,7 @@ void nat_in(struct netpacket *pktptr)
 
 	uint32 iplen;
 
-
+	kprintf("ICMP identifier, seq = %d, %d\n",pktptr->net_icmpidentifier, pktptr->net_icmpseqno );
 
 /*******************************************************/
 	/* Check the destination address is Unique local address */

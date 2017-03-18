@@ -166,6 +166,17 @@ struct nd_descache
 
 };
 
+/* Translation Table */
+struct nat_translate
+{
+	byte nat_packettype;	//Type of packet - ICMP or UDP
+	byte nat_iplocal[16];	//Local IP addr in packet
+	byte nat_packetidlocal;	//Port no or Identifier in local net
+	byte nat_ipremote[16];	//Remote Ip addr in packet
+	byte nat_packetidremote;//Port no or Identifier outside local net
+};
+
+
 
 extern struct nd_routertbl ndroute_tab[];
 extern struct nd_nbcentry nbcache_tab[];

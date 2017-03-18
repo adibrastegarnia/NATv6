@@ -34,7 +34,6 @@ void pollInputEof()	{
  */
 shellcmd xsh_ping6(int nargs, char *args[])
 {
-	int32 pings = 5;
 	byte	ipaddr[16];			/* IP address in binary		*/
 	int32	retval;			/* return value			*/
 	char	rbuf[56];			/* buffer of chars		*/
@@ -98,13 +97,14 @@ shellcmd xsh_ping6(int nargs, char *args[])
 
 	/* Fill the buffer with values - start with low-order byte of	*/
 	/*	the sequence number and increment			*/
-	buf[0] = slot;
-	buf[1] = ++seq;
-	for (i = 2; i<sizeof(buf); i++) {
+
+	for (i = 4; i<sizeof(buf); i++) {
 		buf[i] = 0xff & i;
 	}
-	
-
+	buf[0] = 0;
+	buf[1] = 0;
+	buf[2] = slot;
+	buf[3] = 0;
 
 	kprintf("\n\n PING ");
 	ip6addr_print(ipaddr);
@@ -116,7 +116,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	while(eofReceived == 0)	{
 		//SET TIMER DATA
 		//Update seq no
-		buf[1] = ++seq;
+		buf[0] = ++seq;
 
 		resume(create(sender, 1024, 60, "Sender", 2, ipaddr, iface));
 		pSent++;
@@ -131,14 +131,14 @@ shellcmd xsh_ping6(int nargs, char *args[])
 			kprintf("ping6: no response from host %s\n", args[1]);
 		}
 		else{
-			if(rbuf[1] == seq && rbuf[0] ==slot)	{
+			if(rbuf[0] == seq)	{
 				pRecv++;		
 				kprintf("%d bytes from ", 56);	
 				ip6addr_print_ping(ipaddr);
 				kprintf(": rtt = %.6fus with seq %2d\n", ((tRecv - tSent)/14.318), seq);
 			}
 			else{
-				//kprintf("Received seq = %d, slot = %d, sent seq = %d, slot =%d", buf[1], buf[0], seq, slot);
+				kprintf("Received seq = %d,  sent seq = %d", rbuf[0], seq);
 			}
 		}
 

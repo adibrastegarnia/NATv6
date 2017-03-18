@@ -5,7 +5,6 @@ struct	icmpentry icmptab[ICMP_SLOTS];   /* Table of processes using ping*/
 extern uint32 tRecv;
 
 
-
 /*--------------------------------------------------------------
  * icmp_init: Initialize icmp table 
  * -------------------------------------------------------------*/
@@ -65,7 +64,7 @@ void icmp6_in(struct netpacket *pktptr)
 			/* Handle Echo Reply message: verify that ID is valid */
 			mask = disable();
 			tRecv = hpet->mcv_l;
-			slot = pktptr->net_icdata[0];
+			slot = (int32)pktptr->net_icmpseqno;
 			if ( (slot < 0) || (slot >= ICMP_SLOTS) ) {
 				freebuf((char *)pktptr);
 				restore(mask);
@@ -288,7 +287,7 @@ int32	icmp6_register (
 			if (freeslot == -1) {
 				freeslot = i;
 			}
-		} else if (icmptr->icremip == remip) {
+		} else if (memcmp(icmptr->icremip,remip,16) == 0) {
 			restore(mask);
 			return SYSERR;	/* Already registered */
 		}
@@ -433,10 +432,6 @@ status	icmp6_release (
 	restore(mask);
 	return OK;
 }
-
-
-
-
 
 
 

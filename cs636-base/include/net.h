@@ -52,7 +52,14 @@ struct	netpacket	{
 					byte net_ictype; 		/* IPv6 ICMP type 		*/ 
 					byte net_iccode;		/* IPv6 ICMP code 		*/
 					uint16 net_icchksm;  		/* IPv6 ICMP check sum  	*/
-					byte   net_icdata[1500 - 58];  	/*  IPv6 ICMP payload   	*/
+					union {
+						byte   net_icdata[1500 - 58];  	/*  IPv6 ICMP payload   	*/
+						struct {
+							uint16 net_icmpidentifier;
+							uint16 net_icmpseqno;
+							byte   net_icmpdata[1500 - 62];  	/*  IPv6 ICMP payload   	*/
+						};
+					};
 				};
 
 				/* UDP data strucutre   */
