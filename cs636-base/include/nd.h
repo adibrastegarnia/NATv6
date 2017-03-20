@@ -2,7 +2,7 @@
 #define ND_NCACHE_SIZE  20  /* Neighbour cache size 	      */
 #define ND_ROUTETAB_SIZE 20 /* Routing table size 	      */
 #define ND_INFINITE_TIME -1 
-
+#define NAT_TBL_SIZE 20
 
 #define NC_STATE_FREE   0
 #define NC_STATE_USED   1
@@ -11,6 +11,8 @@
 #define RT_STATE_FREE 0
 #define RT_STATE_USED 1
 
+#define NAT_STATE_FREE	0
+#define NAT_STATE_USED	1
 /* neighbor's reachability state */
 #define NB_REACH_FREE -1;
 #define NB_REACH_INC  0
@@ -167,16 +169,18 @@ struct nd_descache
 };
 
 /* Translation Table */
-struct nat_translate
+struct nat_translatetbl
 {
+	byte state;		//State of the entry - NAT_STATE_FREE, NAT_STATE_USED
 	byte nat_packettype;	//Type of packet - ICMP or UDP
 	byte nat_iplocal[16];	//Local IP addr in packet
-	byte nat_packetidlocal;	//Port no or Identifier in local net
+	byte nat_iflocal;	//Interface of local packet
+	uint16 nat_packetidlocal;	//Port no or Identifier in local net
 	byte nat_ipremote[16];	//Remote Ip addr in packet
-	byte nat_packetidremote;//Port no or Identifier outside local net
+	uint16 nat_packetidremote;//Port no or Identifier outside local net
 };
 
 
-
+extern struct nat_translatetbl nattrans_tab[];
 extern struct nd_routertbl ndroute_tab[];
 extern struct nd_nbcentry nbcache_tab[];

@@ -3,7 +3,16 @@
 #include <xinu.h>
 #include <stdio.h>
 #include <string.h>
-char	buf[56];			/* buffer of chars		*/
+
+
+struct icmpdata {
+	uint16 net_icmpidentifier;
+	uint16 net_icmpseqno;
+	byte   net_icmpdata[1500 - 62];  	/*  IPv6 ICMP payload   	*/
+};
+
+
+byte	buf[56];			/* buffer of chars		*/
 char eofReceived = 0;			/* Flag for EOF */
 
 uint32 tSent = 0;
@@ -36,14 +45,14 @@ shellcmd xsh_ping6(int nargs, char *args[])
 {
 	byte	ipaddr[16];			/* IP address in binary		*/
 	int32	retval;			/* return value			*/
-	char	rbuf[56];			/* buffer of chars		*/
+	byte	rbuf[56];			/* buffer of chars		*/
 	int32	slot;				/* Slot in ICMP to use		*/
 	int32	i;		/* next value to use		*/
 	int32 pSent = 0, pRecv = 0;
 	int32 iface = 0;
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
-	static int32 seq = 0;
-
+	static int16 seq = 0;
+	struct icmpdata * icmppkt;
 	/* For argument '--help', emit help about the 'ping' command	*/
 
 	if (nargs == 2 && strncmp(args[1], "--help", 7) == 0) {
@@ -103,7 +112,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	}
 	buf[0] = 0;
 	buf[1] = 0;
-	buf[2] = slot;
+	buf[2] = slot; // icmp seq num
 	buf[3] = 0;
 
 	kprintf("\n\n PING ");
@@ -125,20 +134,21 @@ shellcmd xsh_ping6(int nargs, char *args[])
 
 		/* Read a reply */
 		retval = icmp6_recv(slot, rbuf, sizeof(rbuf), 500);
-	
+		
 		//GET TIMER DATA
 		if (retval == TIMEOUT) {
 			kprintf("ping6: no response from host %s\n", args[1]);
 		}
 		else{
-			if(rbuf[0] == seq)	{
+			icmppkt = (struct icmpdata*)rbuf;
+			if(icmppkt->net_icmpidentifier == seq)	{
 				pRecv++;		
 				kprintf("%d bytes from ", 56);	
 				ip6addr_print_ping(ipaddr);
 				kprintf(": rtt = %.6fus with seq %2d\n", ((tRecv - tSent)/14.318), seq);
 			}
 			else{
-				kprintf("Received seq = %d,  sent seq = %d", rbuf[0], seq);
+				kprintf("Received seq = %d,  sent seq = %d", icmppkt->net_icmpidentifier, seq);
 			}
 		}
 
