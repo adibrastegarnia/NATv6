@@ -257,6 +257,16 @@ void ip6_in_ext(struct netpacket *pktptr)
 				kprintf("ICMP IN\n");
 				icmp6_in(pktptr);
 				return;
+			case IP6_EXT_UDP:
+				kprintf("UDP IN\n");
+				if (udp_cksum(pktptr) != 0){
+					kprintf("checksum is failed\n");
+					return;
+				}
+				udp_ntoh(pktptr);
+				udp_in(pktptr);
+				return;
+
 			default:
 				kprintf("Unknown IP next header: %02d. Discarding packet\n", nh_value);	
 

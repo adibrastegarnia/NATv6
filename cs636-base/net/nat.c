@@ -349,7 +349,7 @@ int32  nat_translateout(struct netpacket *pktptr){
 					break;
 				case IP_UDP:
 					kprintf("UDP DETECTED in nat_translateout\n");
-					nattblptr->nat_packetidlocal = pktptr->net_udpsrcport;
+					nattblptr->nat_packetidlocal = pktptr->net_udpsport;
 					/* TODO: update checksum for UDP*/
 					break;
 				default:
@@ -399,7 +399,7 @@ int32  nat_translatein(struct netpacket *pktptr){
 							break;
 						case IP_UDP:
 							kprintf("UDP DETECTED in nat_translatein\n");
-							pktptr->net_udpsrcport = nattblptr->nat_packetidlocal;
+							pktptr->net_udpsport = nattblptr->nat_packetidlocal;
 							/* TODO: update checksum for UDP*/
 							break;
 						default:

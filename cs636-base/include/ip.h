@@ -105,6 +105,14 @@ struct pseudo {
 #pragma pack()
 
 
+struct ipinfo{
+	        byte    ip6src[16];
+		byte    ip6dst[16];
+		byte    iphl;
+		uint16  port;
+};
+
+
 
 /* Check IPv6 address is mutlicast or not */
 #define	isipmc(x)	((*(x)) == 0xff)

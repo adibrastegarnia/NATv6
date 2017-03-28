@@ -11,7 +11,7 @@
  */
 shellcmd xsh_udpeserver(int nargs, char *args[])
 {
-#ifdef IP_STUFF
+
 	int32	retval;			/* return value from sys calls	*/
 	uint32	localip;		/* local IP address		*/
 	uint32	remip;			/* remote sender's IP address	*/
@@ -21,8 +21,12 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 	int32	slot;			/* slot in UDP table 		*/
 	uint16	echoserverport= 7;	/* port number for UDP echo	*/
 
+	byte remoteip[]= {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	                  0, 0, 0};
+	int32 iface = 0;
 	/* For argument '--help', emit a help message	*/
 
+	struct ipinfo ipdata;
 	if (nargs == 2 && strncmp(args[1], "--help", 7) == 0) {
 		printf("Use: %s\n\n", args[0]);
 		printf("Description:\n");
@@ -34,24 +38,36 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 
 	/* Check for valid IP address argument */
 
-	if (nargs != 1) {
+	if (nargs != 2) {
 		fprintf(stderr, "%s: no arguments expected\n", args[0]);
 		fprintf(stderr, "Try '%s --help' for more information\n",
 				args[0]);
 		return 1;
 	}
 
-	localip = getlocalip();
-	if (localip == SYSERR) {
-		fprintf(stderr,
-			"%s: could not obtain a local IP address\n",
-			args[0]);
-		return 1;
+
+	if(args[1][0] == '0')
+	{
+		kprintf("iface: 0\n");
+		iface = 0;
+
+	}
+	else if(args[1][0] == '1')
+	{
+		kprintf("iface: 1\n");
+		iface = 1;
+
+	}
+	else if(args[2][0] == '2') 
+	{
+		kprintf("iface: 2\n");
+		iface = 2;
+
 	}
 
 	/* register local UDP port */
 
-	slot = udp_register(0, 0, echoserverport);
+	slot = udp_register(iface, remoteip, 52743 , echoserverport);
 	if (slot == SYSERR) {
 		fprintf(stderr, "%s: could not reserve UDP port %d\n",
 				args[0], echoserverport);
@@ -60,9 +76,16 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 
 	/* Do forever: read an incoming datagram and send it back */
 
+	int i=0;
+	for(i=0; i< 16; i++)
+	{
+		ipdata.ip6src[i] = 0x00;
+		ipdata.ip6dst[i] = 0x00;
+
+	}
+	ipdata.port = 52743;
 	while (TRUE) {
-		retval = udp_recvaddr(slot, &remip, &remport, buff,
-						sizeof(buff), 600000);
+		retval = udp_recvaddr(slot, buff, sizeof(buff), 600000, (struct ipinfo *)&ipdata);
 
 		if (retval == TIMEOUT) {
 			continue;
@@ -79,6 +102,5 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 			return 1;
 		}
 	}
-#endif
 	return 0;
 }

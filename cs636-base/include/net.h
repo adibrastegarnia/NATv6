@@ -64,10 +64,10 @@ struct	netpacket	{
 
 				/* UDP data strucutre   */
 				struct {
-					uint16 net_udpsrcport;  	/* IPv6 UDP source port 	*/
-					uint16 net_udpdstport;  	/* IPv6 UDP destination port 	*/
+					uint16 net_udpsport;  	/* IPv6 UDP source port 	*/
+					uint16 net_udpdport;  	/* IPv6 UDP destination port 	*/
 					uint16 net_udplen;    		/* IPv6 UDP length		*/ 		
-					uint16 net_udpchksm;     	/* IPv6 UDP checksum 		*/
+					uint16 net_udpcksm;     	/* IPv6 UDP checksum 		*/
 					byte   net_udpdata[1500-62];    /* IPv6 UDP payload 		*/
 				};
 			};
