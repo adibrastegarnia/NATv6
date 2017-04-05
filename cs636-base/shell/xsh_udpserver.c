@@ -13,9 +13,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 {
 
 	int32	retval;			/* return value from sys calls	*/
-	uint32	localip;		/* local IP address		*/
-	uint32	remip;			/* remote sender's IP address	*/
-	uint16	remport;		/* remote sender's UDP port	*/
+	uint16	remport = 52743 ;		/* remote sender's UDP port	*/
 	char	buff[1500];		/* buffer for incoming reply	*/
 	int32	msglen;			/* length of outgoing message	*/
 	int32	slot;			/* slot in UDP table 		*/
@@ -67,7 +65,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 
 	/* register local UDP port */
 
-	slot = udp_register(iface, remoteip, 52743 , echoserverport);
+	slot = udp_register(iface, remoteip, remport , echoserverport);
 	if (slot == SYSERR) {
 		fprintf(stderr, "%s: could not reserve UDP port %d\n",
 				args[0], echoserverport);
@@ -95,7 +93,10 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 			return 1;
 		}
 		msglen = retval;
-		retval = udp_sendto(slot, remip, remport, buff, msglen);
+		
+		ip6addr_print_ping(ipdata.ip6src);
+
+		retval = udp_sendto(slot, ipdata.ip6src, remport, buff, msglen);
 		if (retval == SYSERR) {
 			fprintf(stderr, "%s: udp_sendto failed\n",
 				args[0]);

@@ -508,7 +508,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 status ip6_send(struct netpacket *pktptr)
 {
 
-	kprintf("Send IP message \n");
+	kprintf("Send IP message to \n");
 
 	intmask mask;
 	mask = disable();
@@ -522,7 +522,7 @@ status ip6_send(struct netpacket *pktptr)
 	byte nxthop[16];
 	if(pktptr->net_iface<0 || pktptr->net_iface>3){
 		kprintf("Invalid iface in IP Send %d\n", pktptr->net_iface);
-		return;
+		return SYSERR;
 	}
 	switch(pktptr->net_ip6nh)
 	{
@@ -532,13 +532,17 @@ status ip6_send(struct netpacket *pktptr)
 			chksm = icmp6_chksum(pktptr);
 			pktptr->net_icchksm = htons(chksm);
 			break;
-
+		/* Handling ICMPv6 Packets */
+		case IP6_EXT_UDP:
+			chksm = udp_cksum(pktptr);
+			pktptr->net_udpcksm = htons(chksm);
+			break;
 
 	}
 
 	/* Next Hop determination */
 	//kprintf("Dest in IPsend:");
-	//ip6addr_print(pktptr->net_ip6dst);
+	ip6addr_print(pktptr->net_ip6dst);
 	retval = ip6_route(pktptr, nxthop);
 	
 	/* Resolve an IPv6 Address to a Layer 2 address */

@@ -32,7 +32,7 @@ void	udp_init (void) {
  */
 int32	udp_register (
 	int32	iface,		/* Interface index	*/
-	byte	remip[16],	/* Remotr IP address	*/
+	byte	remip[16],	/* Remote IP address	*/
 	uint16	remport,	/* Remote port		*/
 	uint16	locport		/* Local port		*/
 	)
@@ -115,7 +115,12 @@ void	udp_in (
 	intmask	mask;			/* Saved interrupt mask	*/
 	int32	found = -1;		/* Empty slot in udptab	*/
 	int32	i;			/* For loop index	*/
-
+	udp_ntoh(pkt);
+	kprintf("pkt->net_iface : %d",pkt->net_iface);
+	kprintf("pkt->net_udpsport : %d",pkt->net_udpsport );
+	kprintf("pkt->net_udpdport : %d",pkt->net_udpdport );
+	ip6addr_print_ping(pkt->net_ip6src);
+	
 	mask = disable();
 
 	for(i = 0; i < UDP_SLOTS; i++) {
@@ -132,7 +137,7 @@ void	udp_in (
 				found = i;
 				continue;
 			}
-			if(!memcmp(pkt->net_ip6src, udptr->udremip, 16)) {
+			if(memcmp(pkt->net_ip6src, udptr->udremip, 16)) {
 				found = i;
 				break;
 			}
@@ -328,7 +333,8 @@ int32	udp_send (
 	struct	udpentry *udptr;	/* Pointer to UDP table entry	*/
 	struct	netpacket *pkt;		/* Pointer to packet buffer	*/
 	intmask	mask;			/* Saved interrupt mask		*/
-
+	struct	ifentry *ifptr;
+	
 	if((slot < 0) || (slot >= UDP_SLOTS)) {
 		return SYSERR;
 	}
@@ -357,6 +363,7 @@ int32	udp_send (
 	}
 
 	pkt->net_iface = udptr->udiface;
+	ifptr = &if_tab[pkt->net_iface];
 
 	pkt->net_ip6ver = 0x60;
 	pkt->net_ip6tc = 0;
@@ -364,7 +371,10 @@ int32	udp_send (
 	pkt->net_ip6hl = 255;
 	pkt->net_ip6nh = IP_UDP;
 	pkt->net_ip6len = len + UDP_HDR_LEN;
-	memcpy(pkt->net_ip6src, ip6_unspec, 16);
+
+	//TODO get ucast addr based on dest addr type
+	memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[1].ip6addr , 16);
+
 	memcpy(pkt->net_ip6dst, udptr->udremip, 16);
 
 	pkt->net_udpsport = udptr->udlocport;
@@ -375,6 +385,7 @@ int32	udp_send (
 	memcpy(pkt->net_udpdata, buf, len);
 
 	kprintf("udp_send: sending\n");
+	ip6addr_print_ping(pkt->net_ip6src);
 	ip6_send(pkt);
 
 	restore(mask);
