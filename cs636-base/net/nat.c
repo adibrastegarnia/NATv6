@@ -191,7 +191,7 @@ void nat_in(struct netpacket *pktptr)
 				switch(pktptr->net_ip6nh)
 				{
 					case IP_ICMP6:
-					pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
+					//pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
 					break;
 				}
 

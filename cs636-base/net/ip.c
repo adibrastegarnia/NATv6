@@ -529,11 +529,14 @@ status ip6_send(struct netpacket *pktptr)
 
 		/* Handling ICMPv6 Packets */
 		case IP_ICMP6:
+		       
+			pktptr->net_icchksm = 0;
 			chksm = icmp6_chksum(pktptr);
 			pktptr->net_icchksm = htons(chksm);
 			break;
 		/* Handling ICMPv6 Packets */
 		case IP6_EXT_UDP:
+			pktptr->net_udpcksm = 0;
 			chksm = udp_cksum(pktptr);
 			pktptr->net_udpcksm = htons(chksm);
 			break;
