@@ -214,7 +214,7 @@ void ip6_in(struct netpacket *pktptr)
 
 
 	/* Process the extension headers */
-		kprintf("Host in \n");
+        //kprintf("Host in \n");
 
 	ip6_in_ext((struct netpacket *)pktptr);
 	restore(mask);
@@ -254,11 +254,11 @@ void ip6_in_ext(struct netpacket *pktptr)
 				return;
 
 			case IP6_EXT_ICMP:
-				kprintf("ICMP IN\n");
+				//kprintf("ICMP IN\n");
 				icmp6_in(pktptr);
 				return;
 			case IP6_EXT_UDP:
-				kprintf("UDP IN\n");
+				//kprintf("UDP IN\n");
 				if (udp_cksum(pktptr) != 0){
 					kprintf("checksum is failed\n");
 					return;
@@ -348,6 +348,8 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 		{
 			memcpy(nxthop, pktptr->net_ip6dst, 16);
 
+			//memcpy(pktptr->net_ip6src, ifptr->if_ip6ucast[1].ip6addr, 16);
+
 
 			return OK;
 		}
@@ -371,11 +373,14 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 
 		memcpy(nxthop, pktptr->net_ip6dst, 16);
 
+
+		//memcpy(pktptr->net_ip6src, ifptr->if_ip6ucast[0].ip6addr, 16);
+
 		return OK;
 
 	}
 
-	kprintf("IP Route is called\n");
+	//kprintf("IP Route is called\n");
 	//ip6addr_print(pktptr->net_ip6dst);
 	//kprintf("after print\n");
 	byte ipdst[16];
@@ -508,7 +513,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 status ip6_send(struct netpacket *pktptr)
 {
 
-	kprintf("Send IP message to \n");
+	//kprintf("Send IP message to \n");
 
 	intmask mask;
 	mask = disable();
@@ -524,6 +529,13 @@ status ip6_send(struct netpacket *pktptr)
 		kprintf("Invalid iface in IP Send %d\n", pktptr->net_iface);
 		return SYSERR;
 	}
+	
+
+	/* Next Hop determination */
+	//kprintf("Dest in IPsend:");
+	//ip6addr_print(pktptr->net_ip6dst);
+
+
 	switch(pktptr->net_ip6nh)
 	{
 
@@ -542,22 +554,19 @@ status ip6_send(struct netpacket *pktptr)
 			break;
 
 	}
-
-	/* Next Hop determination */
-	//kprintf("Dest in IPsend:");
-	ip6addr_print(pktptr->net_ip6dst);
 	retval = ip6_route(pktptr, nxthop);
-	
+
 	/* Resolve an IPv6 Address to a Layer 2 address */
 	
-	//kprintf("\nNext Hop in IPsend:");
+	//kprintf("\nNext Hop in IPsend:\n");
 	//ip6addr_print(nxthop);
 	if(memcmp(pktptr->net_ip6dst, nxthop , 16) == 0)
 	{
 		//kprintf("nxthop is destip\n");
 		retval = ip6addr_reso(pktptr);
 		if(retval == SYSERR)
-		{//kprintf("destip NOT in NC\n");
+		{
+			//kprintf("destip NOT in NC\n");
 			/* NB discovery should be done */
 			/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
 			ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
@@ -583,12 +592,14 @@ status ip6_send(struct netpacket *pktptr)
 			
 			if(!isipmc(pktptr->net_ip6dst))
 			{
+				//kprintf("The address is not multicast address\n");
 				memcpy(pktptr->net_dst, nbcptr->nc_hwaddr, ETH_ADDR_LEN);
 			}
 			
 			else if(pktptr->net_iface == 0)
 			
 			{
+				//kprintf("The packet should be sent over interface 0\n");
 				pktptr->net_dst[0] = 0x33;
 				pktptr->net_dst[1] = 0x33;
 				memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
@@ -599,7 +610,9 @@ status ip6_send(struct netpacket *pktptr)
 			else if(pktptr->net_iface == 1)
 			{
 				ifptr = &if_tab[1];
-				
+			
+				//kprintf("The packet should be sent over interface 1\n");
+
 				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
 				pktptr->net_dst[1] = ifptr->if_macbcast[1];
 				pktptr->net_dst[2] = ifptr->if_macbcast[2];
@@ -609,7 +622,8 @@ status ip6_send(struct netpacket *pktptr)
 			}
 			else if(pktptr->net_iface == 2)
 			{
-				
+			
+				//kprintf("The packet should be sent over interface 2\n");
 				ifptr = &if_tab[2];
 				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
 				pktptr->net_dst[1] = ifptr->if_macbcast[1];
@@ -627,6 +641,7 @@ status ip6_send(struct netpacket *pktptr)
 	}
 	
 	freebuf((char *)pktptr);
+	//kprintf("End of ip send\n\n");
 	restore(mask);
 	return retval;
 

@@ -239,7 +239,7 @@ int32 nd_ncnew(byte *ip6addr,
 
 void nd_in_nsm(struct netpacket *pktptr)
 {
-		kprintf("Received NSM\n");
+        //kprintf("Received NSM\n");
 	
 	intmask mask;
 	struct nd_nbrsol *nbsolptr;
@@ -397,7 +397,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	//kprintf("\nNeighbor adver sent ip dst: \n");
 	//ip6addr_print(ipdst);
-	kprintf("Send NAM\n");
+	//kprintf("Send NAM\n");
 	icmp6_send(ipdst, ICMP6_NAM_TYPE, 
 			0 , nbadvrptr,
 			nbadvrlen, 
@@ -452,7 +452,7 @@ status nd_ns_send(int32 ncindex)
 		memcpy(ipdst, nbcptr->nc_nbipucast, 16);
 
 	}
-	kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
+	//kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
 	ip6addr_print_ping(ipdst);
 	kprintf("\n");
         icmp6_send(ipdst, ICMP6_NSM_TYPE, 
@@ -488,7 +488,7 @@ void nd_in_nam(struct netpacket *pktptr)
 	/* the Neighbor Cache is searched for the target's entry */
 	retval = nd_ncfindip(nbadvptr->nd_trgtaddr);
 
-	kprintf("Received NAM\n");
+	//kprintf("Received NAM\n");
 	//ip6addr_print(nbadvptr->nd_trgtaddr);
 	if(retval == SYSERR)
 	{
@@ -546,15 +546,19 @@ void nd_in_nam(struct netpacket *pktptr)
 
 					}
 					/* sends any packets queued for the neighbor awaiting address resolution */
-					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount==0)	{
+					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount == 0)	{
 						nbcptr->nc_pqcount--;
 						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
 						pktptrip6->net_icchksm = 0x0000;
+						kprintf("Packet in queue should be sent:qsize%d\n", nbcptr->nc_pqcount);
+						ip6addr_print(pktptrip6->net_ip6dst);
+						
 						ip6_send(pktptrip6);
 
 					}
 					break;
-				default:kprintf("DEFAULT STATE\n");
+				default:
+					kprintf("DEFAULT STATE\n");
 					return;
 			}
 
@@ -597,7 +601,7 @@ status nd_rs_send(int32 iface)
 	icmp6_send(ipdst, ICMP6_RSM_TYPE, 0 , ndrsmptr,rsmlen, iface);
         freemem((char *)ndrsmptr, rsmlen);
 
-	kprintf("ND RS Message Sent\n");
+	//kprintf("ND RS Message Sent\n");
 	restore(mask);
 	return OK;
 

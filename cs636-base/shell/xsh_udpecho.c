@@ -22,7 +22,7 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 	//uint32	localip;		/* local IP address to use	*/
 	uint16	echoport= 7;		/* port number for UDP echo	*/
 	uint16	locport	= 52743;	/* local port to use		*/
-	int32	retries	= 5;		/* number of retries		*/
+	int32	retries	= 20;		/* number of retries		*/
 	int32	delay	= 2000;		/* reception delay in ms	*/
 
 	int32 iface = 0;                  /* Interface number */
@@ -100,6 +100,7 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 				args[0]);
 			return 1;
 		}
+		//kprintf("UDP sent\n");
 
 		retval = udp_recv(slot, inbuf, sizeof(inbuf), delay);
 		if (retval == TIMEOUT) {
@@ -111,7 +112,9 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 			//udp_release(slot);
 			return 1;
 		}
-		break;
+		//break;
+		kprintf("UDP OK\n");
+		sleepms(1000);
 	}
 
 	//udp_release(slot);

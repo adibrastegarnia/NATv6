@@ -388,7 +388,7 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
-			kprintf("IP6 in net_in\n");
+			//kprintf("IP6 in net_in\n");
 			//ip6addr_print(pkt->net_ip6dst);
 			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);

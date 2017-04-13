@@ -150,10 +150,12 @@ shellcmd xsh_ping6(int nargs, char *args[])
 			else{
 				kprintf("Received seq = %d,  sent seq = %d", icmppkt->net_icmpidentifier, seq);
 			}
+
 		}
 
 
 		sleepms(1000);
+		//break;
 	}
 	eofReceived = 0;
 	icmp6_release(slot);
