@@ -532,6 +532,62 @@ uint16	udp_cksum (
 	return (~cksum);
 }
 
+
+status udp_release(uid32 slot)
+{
+	intmask mask;
+	struct udpentry *udptr;
+	struct netpacket *pkt;
+
+	mask = disable();
+
+	if((slot < 0) || (slot >=UDP_SLOTS))
+	{
+
+		restore(mask);
+		return SYSERR;
+
+
+	}
+
+
+	udptr = &udptab[slot];
+
+	if(udptr->udstate == UDP_FREE)
+	{
+
+		restore(mask);
+		return SYSERR;
+
+	}
+
+	resched_cntl(DEFER_START);
+	while(udptr->udcount > 0)
+	{
+		pkt = udptr->udqueue[udptr->udhead++];
+		if(udptr->udhead >= UDP_QSIZ)
+		{
+
+			udptr->udhead = 0;
+
+
+		}
+
+		freebuf((char *)pkt);
+		udptr->udcount--;
+
+	}
+	udptr->udstate = UDP_FREE;
+	resched_cntl(DEFER_STOP);
+	restore(mask);
+	return OK;
+
+
+
+
+}
+
+
 /*------------------------------------------------------------------------
  * udp_hton  -  Convert UDP header fields from network to host order
  *------------------------------------------------------------------------

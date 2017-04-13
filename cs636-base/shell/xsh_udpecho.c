@@ -139,6 +139,7 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 		}
 	}*/
 
+	udp_release(slot);
 	printf("UDP echo test was successful\n");
 
 	return 0;

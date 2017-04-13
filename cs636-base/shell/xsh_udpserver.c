@@ -56,7 +56,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 		iface = 1;
 
 	}
-	else if(args[2][0] == '2') 
+	else if(args[1][0] == '2') 
 	{
 		kprintf("iface: 2\n");
 		iface = 2;
