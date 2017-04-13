@@ -116,35 +116,52 @@ void	udp_in (
 	int32	found = -1;		/* Empty slot in udptab	*/
 	int32	i;			/* For loop index	*/
 	udp_ntoh(pkt);
-	kprintf("pkt->net_iface : %d",pkt->net_iface);
-	kprintf("pkt->net_udpsport : %d",pkt->net_udpsport );
-	kprintf("pkt->net_udpdport : %d",pkt->net_udpdport );
-	ip6addr_print_ping(pkt->net_ip6src);
+	//kprintf("pkt->net_iface : %d",pkt->net_iface);
+	//kprintf("pkt->net_udpsport : %d",pkt->net_udpsport);
+	//kprintf("pkt->net_udpdport : %d\n",pkt->net_udpdport );
+
+	//ip6addr_print_ping(pkt->net_ip6src);
+	kprintf("\n");
 	
 	mask = disable();
 
 	for(i = 0; i < UDP_SLOTS; i++) {
 
 		udptr = &udptab[i];
+		//ip6addr_print_ping(udptr->udremip);
+		//kprintf("slot sprot : %d,", udptr->udremport);
+		//kprintf("slot dport : %d\n",udptr->udlocport);
+
+		//kprintf("ip unspec\n");
+                //ip6addr_print(ip6_unspec);
 		if(udptr->udstate == UDP_FREE) {
+
 			continue;
 		}
+
+
 
 		if((pkt->net_iface == udptr->udiface) &&
 		   (pkt->net_udpsport == udptr->udremport) &&
 		   (pkt->net_udpdport == udptr->udlocport)) {
+			//int retval = isipunspec(udptr->udremip);
+			//kprintf("retval:%d\n", retval);
+			//ip6addr_print(udptr->udremip);
 			if(isipunspec(udptr->udremip)) {
+			
+				//kprintf("here\n");
 				found = i;
 				continue;
 			}
-			if(memcmp(pkt->net_ip6src, udptr->udremip, 16)) {
+			if(memcmp(pkt->net_ip6src, udptr->udremip, 16) == 0) {
+
 				found = i;
 				break;
 			}
 		}
 	}
 
-	kprintf("found %d\n", found);
+	//kprintf("\nfound %d\n", found);
 	if(found == -1) {
 		//freebuf((char *)pkt);
 		return;
@@ -207,6 +224,7 @@ int32	udp_recv (
 		return SYSERR;
 	}
 
+	//kprintf("iN UDP RECV\n");
 	if(udptr->udcount == 0) {
 		udptr->udpid = getpid();
 		udptr->udstate = UDP_RECV;
@@ -240,6 +258,7 @@ int32	udp_recv (
 
 	memcpy(buf, pkt->net_udpdata, len);
 
+	//kprintf("End of UDP RECV\n");
 	freebuf((char *)pkt);
 	restore(mask);
 	return len;
@@ -377,6 +396,8 @@ int32	udp_send (
 
 	memcpy(pkt->net_ip6dst, udptr->udremip, 16);
 
+	//kprintf("UDP send: loc port:destport %d:%d\n", udptr->udlocport, udptr->udremport);
+
 	pkt->net_udpsport = udptr->udlocport;
 	pkt->net_udpdport = udptr->udremport;
 	pkt->net_udplen = UDP_HDR_LEN + len;
@@ -385,7 +406,7 @@ int32	udp_send (
 	memcpy(pkt->net_udpdata, buf, len);
 
 	kprintf("udp_send: sending\n");
-	ip6addr_print_ping(pkt->net_ip6src);
+	//ip6addr_print_ping(pkt->net_ip6src);
 	ip6_send(pkt);
 
 	restore(mask);
@@ -413,8 +434,10 @@ int32	udp_sendto (
 
 	mask = disable();
 
+	struct ifentry *ifptr;
 	udptr = &udptab[slot];
 
+	ifptr = &if_tab[ifprime];
 	if(udptr->udstate == UDP_FREE) {
 		kprintf("udp_sendto: error1\n");
 		restore(mask);
@@ -437,7 +460,10 @@ int32	udp_sendto (
 	pkt->net_ip6hl = 255;
 	pkt->net_ip6nh = IP_UDP;
 	pkt->net_ip6len = len + UDP_HDR_LEN;
-	memcpy(pkt->net_ip6src, ip6_unspec, 16);
+	//memcpy(pkt->net_ip6src, ip6_unspec, 16);
+	memcpy(pkt->net_ip6src, ifptr->if_ip6ucast[1].ip6addr, 16);
+
+
 	memcpy(pkt->net_ip6dst, remip, 16);
 
 	pkt->net_udpsport = udptr->udlocport;
@@ -502,9 +528,65 @@ uint16	udp_cksum (
 
 	cksum = (sum&0xffff) + ((sum>>16)&0xffff);
 
-	kprintf("checksum :%d\n", cksum);
+	//kprintf("checksum :%d\n", cksum);
 	return (~cksum);
 }
+
+
+status udp_release(uid32 slot)
+{
+	intmask mask;
+	struct udpentry *udptr;
+	struct netpacket *pkt;
+
+	mask = disable();
+
+	if((slot < 0) || (slot >=UDP_SLOTS))
+	{
+
+		restore(mask);
+		return SYSERR;
+
+
+	}
+
+
+	udptr = &udptab[slot];
+
+	if(udptr->udstate == UDP_FREE)
+	{
+
+		restore(mask);
+		return SYSERR;
+
+	}
+
+	resched_cntl(DEFER_START);
+	while(udptr->udcount > 0)
+	{
+		pkt = udptr->udqueue[udptr->udhead++];
+		if(udptr->udhead >= UDP_QSIZ)
+		{
+
+			udptr->udhead = 0;
+
+
+		}
+
+		freebuf((char *)pkt);
+		udptr->udcount--;
+
+	}
+	udptr->udstate = UDP_FREE;
+	resched_cntl(DEFER_STOP);
+	restore(mask);
+	return OK;
+
+
+
+
+}
+
 
 /*------------------------------------------------------------------------
  * udp_hton  -  Convert UDP header fields from network to host order

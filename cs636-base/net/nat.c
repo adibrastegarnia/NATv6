@@ -162,7 +162,7 @@ void nat_in(struct netpacket *pktptr)
 
 	uint32 iplen;
 
-	kprintf("ICMP identifier, seq = %d, %d\n",pktptr->net_icmpidentifier, pktptr->net_icmpseqno );
+	kprintf("ICMP identifier, seq = %d, %d\n", pktptr->net_icmpidentifier, pktptr->net_icmpseqno);
 	
 
 /*******************************************************/
@@ -196,6 +196,7 @@ void nat_in(struct netpacket *pktptr)
 				}
 
 				retval = ip6_send(pktptr);
+
 				restore(mask);
 				return retval;
 			}

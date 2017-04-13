@@ -51,7 +51,7 @@ void icmp6_in(struct netpacket *pktptr)
 		
 		/* ICMP Echo request */
 		case ICMP6_ECHREQ_TYPE:
-			kprintf("ICMP Echo request\n");
+			//kprintf("ICMP Echo request\n");
 			icmp6_send(pktptr->net_ip6src, 
 					ICMP6_ECHRES_TYPE, 0,
 					pktptr->net_icdata,
@@ -59,7 +59,8 @@ void icmp6_in(struct netpacket *pktptr)
 					pktptr->net_iface);
 			break;
 
-		case ICMP6_ECHRES_TYPE:kprintf("ICMP Echo response\n");
+		case ICMP6_ECHRES_TYPE:
+			//kprintf("ICMP Echo response\n");
 
 			/* Handle Echo Reply message: verify that ID is valid */
 			mask = disable();
@@ -212,7 +213,7 @@ status icmp6_send(byte remip[],
 		return SYSERR;
 
 	}
-	kprintf("Send ICMP message \n");
+	//kprintf("Send ICMP message \n");
 	/* Send ICMPv6 packet */
 	retval = ip6_send(pkt);
 	restore(mask);

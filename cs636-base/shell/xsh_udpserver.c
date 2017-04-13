@@ -56,7 +56,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 		iface = 1;
 
 	}
-	else if(args[2][0] == '2') 
+	else if(args[1][0] == '2') 
 	{
 		kprintf("iface: 2\n");
 		iface = 2;
@@ -93,8 +93,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 			return 1;
 		}
 		msglen = retval;
-		
-		ip6addr_print_ping(ipdata.ip6src);
+	
 
 		retval = udp_sendto(slot, ipdata.ip6src, remport, buff, msglen);
 		if (retval == SYSERR) {
@@ -102,6 +101,7 @@ shellcmd xsh_udpeserver(int nargs, char *args[])
 				args[0]);
 			return 1;
 		}
+		
 	}
 	return 0;
 }
