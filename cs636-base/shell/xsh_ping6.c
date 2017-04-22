@@ -127,13 +127,13 @@ shellcmd xsh_ping6(int nargs, char *args[])
 		//Update seq no
 		buf[0] = ++seq;
 
-		resume(create(sender, 1024, 60, "Sender", 2, ipaddr, iface));
+		resume(create(sender, 4096, 60, "Sender", 2, ipaddr, iface));
 		pSent++;
 		// Receive and print packet data
 		//kprintf("Pinging ..");
 
 		/* Read a reply */
-		retval = icmp6_recv(slot, rbuf, sizeof(rbuf), 500);
+		retval = icmp6_recv(slot, rbuf, sizeof(rbuf), 800);
 		
 		//GET TIMER DATA
 		if (retval == TIMEOUT) {
@@ -160,7 +160,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	// Ping statistics
 	kprintf("--- ");ip6addr_print(ipaddr); kprintf("  ping statistics ---\n");
 	kprintf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", pSent,pRecv,(((pSent-pRecv)*100)/pSent),0);
-	kprintf("rtt min/avg/max/mdev = %f/%f/%f/%f ms\n\n", 0,0,0,0);
+	//kprintf("rtt min/avg/max/mdev = %f/%f/%f/%f ms\n\n", 0,0,0,0);
 
 
 	return 0;

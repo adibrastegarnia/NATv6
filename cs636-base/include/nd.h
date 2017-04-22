@@ -1,4 +1,4 @@
-#define NC_PKTQ_SIZE	2   /* Neigbour cache (NC) queue size */
+#define NC_PKTQ_SIZE	5   /* Neigbour cache (NC) queue size */
 #define ND_NCACHE_SIZE  20  /* Neighbour cache size 	      */
 #define ND_ROUTETAB_SIZE 20 /* Routing table size 	      */
 #define ND_INFINITE_TIME -1 

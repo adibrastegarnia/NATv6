@@ -96,7 +96,7 @@ extern	bpid32	netbufpool;		/* ID of net packet buffer pool	*/
 #define	IF_UP		1	/* Interface is currently on line	*/
 #define	IF_DOWN		0	/* Interface is currently offline	*/
 
-#define	IF_QUEUESIZE	20	/* Size of the incoming packet queue	*/
+#define	IF_QUEUESIZE	120	/* Size of the incoming packet queue	*/
 				/*   for each interface			*/
 
 #define	IF_NLEN		32	/* Max characters in an interface name	*/

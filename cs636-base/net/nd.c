@@ -65,11 +65,17 @@ void nd_init(void)
  * -------------------------------------------------*/
 void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 {
+	kprintf("Inside ncq_insert: %d\n", ncindex);
+	ip6addr_print(pktptr->net_ip6dst);
+	ip6addr_print(pktptr->net_ip6src);
 	struct nd_nbcentry *nbcptr;
 	nbcptr = &nbcache_tab[ncindex];
+	struct netpacket * newpkt = (struct netpacket *)getbuf(netbufpool);
+	memcpy(newpkt, pktptr, sizeof(struct netpacket));
+	freebuf(pktptr);
 	if(nbcptr->nc_pqcount < NC_PKTQ_SIZE)
 	{
-		nbcptr->nc_pktq[nbcptr->nc_pqtail++] = pktptr;
+		nbcptr->nc_pktq[nbcptr->nc_pqtail++] = newpkt;
 		if(nbcptr->nc_pqtail >= NC_PKTQ_SIZE)
 		{
 			nbcptr->nc_pqtail = 0;
@@ -81,12 +87,13 @@ void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 	}
 	else if(nbcptr->nc_pqcount == NC_PKTQ_SIZE)
 	{
+		kprintf("Queue trouble \n");
 		freebuf((char *)nbcptr->nc_pktq[nbcptr->nc_pqtail]);
-        	nbcptr->nc_pktq[nbcptr->nc_pqtail] = pktptr;
+        	nbcptr->nc_pktq[nbcptr->nc_pqtail] = newpkt;
 
 
 	}
-
+	kprintf("End of ncq_insert\n");
 	return;
 
 }
@@ -116,7 +123,8 @@ int32 nd_ncfindip(byte *ip6addr)
 		}
 
 	}
-
+	kprintf("DID NOT FIND IP:");
+ip6addr_print(ip6addr);
 	return SYSERR;
 
 }
@@ -195,9 +203,10 @@ int32 nd_ncnew(byte *ip6addr,
 		}
 
 	}
+	kprintf("ND cache index: %d\n", i);
 	if(i >= ND_NCACHE_SIZE)
 	{
-		kprintf("Neighbor Cache is full\n");
+		//kprintf("Neighbor Cache is full\n");
 		return SYSERR;
 
 	}
@@ -239,13 +248,13 @@ int32 nd_ncnew(byte *ip6addr,
 
 void nd_in_nsm(struct netpacket *pktptr)
 {
-		kprintf("Received NSM\n");
+		//kprintf("Received NSM\n");
 	
 	intmask mask;
 	struct nd_nbrsol *nbsolptr;
 	struct nd_nbadvr *nbadvrptr;
 	struct nd_opt    *nboptptr;
-	byte *ipdst;
+	byte ipdst[16];
 	int32 i=0;
 
 
@@ -259,7 +268,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 	/* ICMP Code should be 0 */
 	if(pktptr->net_iccode !=0)
 	{
-		kprintf("ICMP Code is wrong\n");
+		//kprintf("ICMP Code is wrong\n");
 		return;
 	}
 	/* ICMP length is 24 or more octests */
@@ -274,7 +283,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	if(isipmc(nbsolptr->nd_trgtaddr))
 	{
-		kprintf("Target address is a multicast address\n");
+		//kprintf("Target address is a multicast address\n");
 		//		return;
 	}
 
@@ -313,7 +322,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	if(i >= ifptr->if_nipucast)
 	{
-		kprintf("Error\n");
+		//kprintf("Error\n");
 		restore(mask);
 		return;
 
@@ -323,6 +332,8 @@ void nd_in_nsm(struct netpacket *pktptr)
 	nboptptr = (struct nd_opt *)nbsolptr->nd_opts;
 	//kprintf("In ND_IN_NS:%d\n", nboptptr->nd_type);
 
+
+//kprintf("NSM_IN: ");ip6addr_print(pktptr->net_ip6src);ip6addr_print(pktptr->net_ip6dst);
 	switch(nboptptr->nd_type)
 	{
 		case ND_OPT_SLLA:
@@ -339,7 +350,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 			}
 
 			if(nd_ncfindip(pktptr->net_ip6src) != SYSERR)
-			{
+			{kprintf("ncupdate");
 				/* Update the entry which is found in the NB cache */
 				nd_ncupdate(pktptr->net_ip6src, 
 						nboptptr->nd_lladr, 
@@ -347,7 +358,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 			}
 			/* Create a New entry in NB cache data strucutre */
 			else
-			{
+			{kprintf("ncnew");
 			nd_ncnew(pktptr->net_ip6src, 
 					nboptptr->nd_lladr,
 					pktptr->net_iface, 
@@ -385,24 +396,26 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	if(isipunspec(pktptr->net_ip6src))
 	{
-
+kprintf("isipunspec");
 		nbadvrptr->nd_s = 0;
-		ipdst = ip6_allnodesmc; 
+		//ipdst = ip6_allnodesmc; 
+memcpy(ipdst , ip6_allnodesmc, 16);
 	}
 	else
-	{
-		ipdst = pktptr->net_ip6src;
+	{//kprintf("not isipunspec");
+		//ipdst = pktptr->net_ip6src;
+memcpy(ipdst , pktptr->net_ip6src, 16);
 	}
 
 
-	//kprintf("\nNeighbor adver sent ip dst: \n");
-	//ip6addr_print(ipdst);
+	kprintf("\nNeighbor adver sent ip dst: \n");
+	ip6addr_print(ipdst);
 	kprintf("Send NAM\n");
 	icmp6_send(ipdst, ICMP6_NAM_TYPE, 
 			0 , nbadvrptr,
 			nbadvrlen, 
 			pktptr->net_iface);
-
+ip6addr_print(nbadvrptr);
 	freemem((char *)nbadvrptr, nbadvrlen);
 	restore(mask);
 
@@ -416,10 +429,11 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 status nd_ns_send(int32 ncindex)
 {
-
 	struct nd_nbrsol *nbsptr;
 	struct nd_nbcentry *nbcptr;
 	struct nd_opt *ndoptptr;
+	kprintf("nd_ns_send: %d\n", ncindex);
+	ip6addr_print(nbcptr->nc_nbipucast);
 
 	byte ipdst[16];
 
@@ -452,9 +466,9 @@ status nd_ns_send(int32 ncindex)
 		memcpy(ipdst, nbcptr->nc_nbipucast, 16);
 
 	}
-	kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
-	ip6addr_print_ping(ipdst);
-	kprintf("\n");
+	//kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
+	//ip6addr_print_ping(ipdst);
+	//kprintf("\n");
         icmp6_send(ipdst, ICMP6_NSM_TYPE, 
 			0 , nbsptr,
 			nslen, 
@@ -489,7 +503,6 @@ void nd_in_nam(struct netpacket *pktptr)
 	retval = nd_ncfindip(nbadvptr->nd_trgtaddr);
 
 	kprintf("Received NAM\n");
-	//ip6addr_print(nbadvptr->nd_trgtaddr);
 	if(retval == SYSERR)
 	{
 
@@ -497,6 +510,8 @@ void nd_in_nam(struct netpacket *pktptr)
 
 		return;
 	}
+	kprintf("In_nam Retval: %d\n", retval);
+	ip6addr_print(nbadvptr->nd_trgtaddr);
 
 	nbcptr = &nbcache_tab[retval];
 	int32 rstate = nbcptr->nc_reachstate;
@@ -545,21 +560,28 @@ void nd_in_nam(struct netpacket *pktptr)
 						TRUE, 1);
 
 					}
+					kprintf("Into while loop:\n");
 					/* sends any packets queued for the neighbor awaiting address resolution */
-					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount==0)	{
+					while(nbcptr->nc_pqhead < nbcptr->nc_pqtail && nbcptr->nc_pqcount>=1)	{
 						nbcptr->nc_pqcount--;
 						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
 						pktptrip6->net_icchksm = 0x0000;
+						kprintf("NC pkt head, tail,:%d %d\n", nbcptr->nc_pqhead , nbcptr->nc_pqtail );
+						kprintf("Send pending: iface, type, len, dest, src: %d, %d, %d", pktptrip6->net_iface, pktptrip6->net_ictype, pktptrip6->net_ip6len );
+						ip6addr_print(pktptrip6->net_ip6dst);
+						ip6addr_print(pktptrip6->net_ip6src);
+
 						ip6_send(pktptrip6);
 
 					}
+					kprintf("Out of while loop\n");
 					break;
-				default:kprintf("DEFAULT STATE\n");
-					return;
+				default://kprintf("DEFAULT STATE\n");
+					break;
 			}
 
 	}
-	
+	kprintf("leaving in_nam \n");
 
 
 }
@@ -597,7 +619,7 @@ status nd_rs_send(int32 iface)
 	icmp6_send(ipdst, ICMP6_RSM_TYPE, 0 , ndrsmptr,rsmlen, iface);
         freemem((char *)ndrsmptr, rsmlen);
 
-	kprintf("ND RS Message Sent\n");
+	//kprintf("ND RS Message Sent\n");
 	restore(mask);
 	return OK;
 
@@ -846,25 +868,25 @@ void nd_in(struct netpacket *pktptr)
 	{
 		/* Handling Neighbour Soliciation Packet */
 		case ICMP6_NSM_TYPE:
-			kprintf("Neighbor Solicitation Message\n");
+			//kprintf("Neighbor Solicitation Message\n");
 			nd_in_nsm(pktptr);
 			break;
 		/* Handling Neighbour Advertisment Packet */
 		case ICMP6_NAM_TYPE:
-			kprintf("Neighbor Advertisement Message\n");
+			//kprintf("Neighbor Advertisement Message\n");
 			nd_in_nam(pktptr);
 			break;
 	
 
 		case ICMP6_RAM_TYPE:
-			kprintf("Router Advertisemet\n");
+			//kprintf("Router Advertisemet\n");
 			nd_ram_in(pktptr);
 			break;
 		case ICMP6_RDM_TYPE:
 			break;
 		case ICMP6_RSM_TYPE:
 			if(!host){
-				kprintf("Router Solicitation Message\n");
+				//kprintf("Router Solicitation Message\n");
 				nd_rsm_in(pktptr);
 			}
 			break;

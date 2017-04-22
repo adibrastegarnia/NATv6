@@ -39,13 +39,15 @@ void icmp6_in(struct netpacket *pktptr)
 
 	if(icmp6_chksum(pktptr) !=0)
 	{
-
+		kprintf("net_ictype %d\n", pktptr->net_ictype);
 		kprintf("Checksum is failed\n");
+		ip6addr_print(pktptr->net_ip6src);
+		ip6addr_print(pktptr->net_ip6dst);
 		return;
 
 	}
 	/* Check ICMPv6 message type */
-	//kprintf("net_ictype %d\n", pktptr->net_ictype);
+	kprintf("net_ictype %d\n", pktptr->net_ictype);
 	switch(pktptr->net_ictype)
 	{
 		
@@ -92,12 +94,12 @@ void icmp6_in(struct netpacket *pktptr)
 			break;
 		/* ICMP Router Advertisement Message */
 		case ICMP6_RAM_TYPE:
-			kprintf("ICMP6 Router Advertisemet message\n");
+			//kprintf("ICMP6 Router Advertisemet message\n");
 			nd_in(pktptr);
 			break;
 		/* ICMP Router Solicitation Message */
 		case ICMP6_RSM_TYPE:
-			kprintf("ICMP6 Router solicitation message\n");
+			//kprintf("ICMP6 Router solicitation message\n");
 			nd_in(pktptr);
 			break;
 
@@ -112,7 +114,8 @@ void icmp6_in(struct netpacket *pktptr)
 			//kprintf("ICMP6 neighbor Advertisment message\n");
 			nd_in(pktptr);
 			break;
-
+		default:
+			kprintf("Unknown ICMP type:%d", pktptr->net_ictype);
 	}
 
 
@@ -150,7 +153,8 @@ struct netpacket *icmp_mkpkt(byte remip[],
 	pkt->net_ip6hl = 255;       
 	pkt->net_ip6len = 4 + datalen;
 	memcpy(pkt->net_ip6dst, remip, 16);
-
+kprintf("Mkpt:");
+ip6addr_print(remip);
         ifptr = &if_tab[iface];
 
 	if(isipula(remip))
@@ -206,13 +210,17 @@ status icmp6_send(byte remip[],
 	/* Disable intruptts */
 	mask = disable();
 	/* Create an ICMPv6 packet */
+//ip6addr_print(remip);
+
 	pkt = icmp_mkpkt(remip, ictype, iccode, icdata, datalen, iface);
         if((int32)pkt == SYSERR)
 	{
 		return SYSERR;
 
 	}
-	kprintf("Send ICMP message \n");
+//	kprintf("Send ICMP message: \n");
+//ip6addr_print(pkt->net_ip6src);
+//ip6addr_print(pkt->net_ip6dst);
 	/* Send ICMPv6 packet */
 	retval = ip6_send(pkt);
 	restore(mask);

@@ -221,7 +221,7 @@ void	net_init (void)
 
 	ip6_nwmcast_gen(0, ifptr);
 	ip6_nwmcast_gen(1, ifptr);
-
+	kprintf("\n");
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 
 	ip6ula_gen(0, ifptr);
@@ -388,7 +388,7 @@ process	netin (
 			continue;
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
-			kprintf("IP6 in net_in\n");
+			//kprintf("IP6 in net_in\n");
 			//ip6addr_print(pkt->net_ip6dst);
 			ip6_in((struct netpacket *)pkt);
 			freebuf((char *)pkt);

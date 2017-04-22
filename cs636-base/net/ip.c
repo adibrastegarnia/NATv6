@@ -214,7 +214,7 @@ void ip6_in(struct netpacket *pktptr)
 
 
 	/* Process the extension headers */
-		kprintf("Host in \n");
+		//printf("Host in \n");
 
 	ip6_in_ext((struct netpacket *)pktptr);
 	restore(mask);
@@ -250,7 +250,7 @@ void ip6_in_ext(struct netpacket *pktptr)
 		switch(nh_value)
 		{
 			case IP6_EXT_HBH:
-				kprintf("Hop by Hop header\n");
+				//kprintf("Hop by Hop header\n");
 				return;
 
 			case IP6_EXT_ICMP:
@@ -258,9 +258,9 @@ void ip6_in_ext(struct netpacket *pktptr)
 				icmp6_in(pktptr);
 				return;
 			case IP6_EXT_UDP:
-				kprintf("UDP IN\n");
+				//kprintf("UDP IN\n");
 				if (udp_cksum(pktptr) != 0){
-					kprintf("checksum is failed\n");
+					//kprintf("checksum is failed\n");
 					return;
 				}
 				udp_ntoh(pktptr);
@@ -375,7 +375,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 
 	}
 
-	kprintf("IP Route is called\n");
+	//kprintf("IP Route is called\n");
 	//ip6addr_print(pktptr->net_ip6dst);
 	//kprintf("after print\n");
 	byte ipdst[16];
@@ -406,6 +406,9 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 				pktptr->net_iface, NB_REACH_INC, 0);
 				
 				/* insert packet into the queue */
+			kprintf("IP_route: Packet added to NC Q: %d\n", pktptr->net_ictype);
+			ip6addr_print(pktptr->net_ip6dst);
+			ip6addr_print(pktptr->net_ip6src);
 				nd_ncq_insert(pktptr, ncindex);
 				
 				/* Sending neighbor solicitation message */
@@ -508,7 +511,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 status ip6_send(struct netpacket *pktptr)
 {
 
-	kprintf("Send IP message to \n");
+	//kprintf("Send IP message to \n");
 
 	intmask mask;
 	mask = disable();
@@ -522,8 +525,17 @@ status ip6_send(struct netpacket *pktptr)
 	byte nxthop[16];
 	if(pktptr->net_iface<0 || pktptr->net_iface>3){
 		kprintf("Invalid iface in IP Send %d\n", pktptr->net_iface);
+		kprintf("Invalid iface: len, source addr, dest addr: %d, \n", pktptr->net_ip6len);
+		ip6addr_print(pktptr->net_ip6src);
+		kprintf(",\n");
+		ip6addr_print(pktptr->net_ip6dst);
 		return SYSERR;
 	}
+else{
+kprintf("Valid iface %d: len, type, ictype, source addr, dest addr: %d, %d, %d \n",pktptr->net_iface, pktptr->net_ip6len, pktptr->net_ip6nh, pktptr->net_ictype);
+		ip6addr_print(pktptr->net_ip6src);
+		ip6addr_print(pktptr->net_ip6dst);
+}
 	switch(pktptr->net_ip6nh)
 	{
 
@@ -545,7 +557,7 @@ status ip6_send(struct netpacket *pktptr)
 
 	/* Next Hop determination */
 	//kprintf("Dest in IPsend:");
-	ip6addr_print(pktptr->net_ip6dst);
+	//ip6addr_print(pktptr->net_ip6dst);
 	retval = ip6_route(pktptr, nxthop);
 	
 	/* Resolve an IPv6 Address to a Layer 2 address */
@@ -557,13 +569,16 @@ status ip6_send(struct netpacket *pktptr)
 		//kprintf("nxthop is destip\n");
 		retval = ip6addr_reso(pktptr);
 		if(retval == SYSERR)
-		{//kprintf("destip NOT in NC\n");
+		{	kprintf("destip NOT in NC retval: %d\n", retval);
 			/* NB discovery should be done */
 			/* Create an entry in the neighbor Cache and sets its state to INCOMPLETE */
 			ncindex = nd_ncnew(pktptr->net_ip6dst, NULL, 
 				pktptr->net_iface, NB_REACH_INC, 0);
 			
 			/* insert packet into the queue */
+			kprintf("IP_send:Packet added to NC Q: %d\n", pktptr->net_ictype);
+			ip6addr_print(pktptr->net_ip6dst);
+			ip6addr_print(pktptr->net_ip6src);
 			nd_ncq_insert(pktptr, ncindex);
 			
 			
@@ -592,12 +607,15 @@ status ip6_send(struct netpacket *pktptr)
 				pktptr->net_dst[0] = 0x33;
 				pktptr->net_dst[1] = 0x33;
 				memcpy(pktptr->net_dst + 2, pktptr->net_ip6dst + 12, 4);
+
+				kprintf("MC in ipsend on iface: %d\n", pktptr->net_iface);
 			
 			
 			}
 			
 			else if(pktptr->net_iface == 1)
 			{
+				kprintf("MC in ipsend on iface: %d\n", pktptr->net_iface);
 				ifptr = &if_tab[1];
 				
 				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
@@ -610,6 +628,8 @@ status ip6_send(struct netpacket *pktptr)
 			else if(pktptr->net_iface == 2)
 			{
 				
+				kprintf("MC in ipsend on iface: %d\n", pktptr->net_iface);
+
 				ifptr = &if_tab[2];
 				pktptr->net_dst[0]=  ifptr->if_macbcast[0];
 				pktptr->net_dst[1] = ifptr->if_macbcast[1];
@@ -663,7 +683,7 @@ void ip6addr_print(byte *ip6addr)
 //	kprintf("\n");
 	int32	i;
 	uint16	*ptr16;
-
+kprintf("  ");
 	ptr16 = (uint16 *)ip6addr;
 
 	for(i = 0; i < 7; i++) {
