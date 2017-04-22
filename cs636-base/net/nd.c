@@ -67,9 +67,13 @@ void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 {
 	struct nd_nbcentry *nbcptr;
 	nbcptr = &nbcache_tab[ncindex];
+	struct netpacket *pktnew;
+	pktnew = (struct netpacket *)getbuf(netbufpool);
+	memcpy(pktnew, pktptr, sizeof(struct netpacket));
+	freebuf(pktptr);
 	if(nbcptr->nc_pqcount < NC_PKTQ_SIZE)
 	{
-		nbcptr->nc_pktq[nbcptr->nc_pqtail++] = pktptr;
+		nbcptr->nc_pktq[nbcptr->nc_pqtail++] = pktnew;
 		if(nbcptr->nc_pqtail >= NC_PKTQ_SIZE)
 		{
 			nbcptr->nc_pqtail = 0;
@@ -82,7 +86,7 @@ void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 	else if(nbcptr->nc_pqcount == NC_PKTQ_SIZE)
 	{
 		freebuf((char *)nbcptr->nc_pktq[nbcptr->nc_pqtail]);
-        	nbcptr->nc_pktq[nbcptr->nc_pqtail] = pktptr;
+        	nbcptr->nc_pktq[nbcptr->nc_pqtail] = pktnew;
 
 
 	}
@@ -245,7 +249,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 	struct nd_nbrsol *nbsolptr;
 	struct nd_nbadvr *nbadvrptr;
 	struct nd_opt    *nboptptr;
-	byte *ipdst;
+	byte ipdst[16];
 	int32 i=0;
 
 
@@ -387,11 +391,11 @@ void nd_in_nsm(struct netpacket *pktptr)
 	{
 
 		nbadvrptr->nd_s = 0;
-		ipdst = ip6_allnodesmc; 
+		memcpy(ipdst, ip6_allnodesmc, 16); 
 	}
 	else
 	{
-		ipdst = pktptr->net_ip6src;
+		memcpy(ipdst, pktptr->net_ip6src, 16);
 	}
 
 
@@ -546,7 +550,7 @@ void nd_in_nam(struct netpacket *pktptr)
 
 					}
 					/* sends any packets queued for the neighbor awaiting address resolution */
-					while(nbcptr->nc_pqhead <= nbcptr->nc_pqtail || nbcptr->nc_pqcount == 0)	{
+					while(nbcptr->nc_pqhead < nbcptr->nc_pqtail && nbcptr->nc_pqcount >=1)	{
 						nbcptr->nc_pqcount--;
 						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
 						pktptrip6->net_icchksm = 0x0000;
