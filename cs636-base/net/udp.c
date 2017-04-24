@@ -120,8 +120,8 @@ void	udp_in (
 	kprintf("pkt->net_udpsport : %d",pkt->net_udpsport);
 	kprintf("pkt->net_udpdport : %d\n",pkt->net_udpdport );
 
-	ip6addr_print_ping(pkt->net_ip6src);
-	kprintf("\n");
+	//ip6addr_print_ping(pkt->net_ip6src);
+	//kprintf("\n");
 	
 	mask = disable();
 	tRecvudp = hpet->mcv_l;
@@ -141,12 +141,9 @@ void	udp_in (
 
 
 
-		if((pkt->net_iface == udptr->udiface) &&
-		   (pkt->net_udpsport == udptr->udremport) &&
+		if((pkt->net_iface == udptr->udiface)/* &&
+		   (pkt->net_udpsport == udptr->udremport) */&&
 		   (pkt->net_udpdport == udptr->udlocport)) {
-			//int retval = isipunspec(udptr->udremip);
-			//kprintf("retval:%d\n", retval);
-			//ip6addr_print(udptr->udremip);
 			if(isipunspec(udptr->udremip)) {
 			
 				//kprintf("here\n");
@@ -164,6 +161,8 @@ void	udp_in (
 	//kprintf("\nfound %d\n", found);
 	if(found == -1) {
 		//freebuf((char *)pkt);
+		kprintf("Udp in: error 1 \n");
+	restore(mask);
 		return;
 	}
 
@@ -171,6 +170,8 @@ void	udp_in (
 
 	if(udptr->udcount >= UDP_QSIZ) {
 		//freebuf((char *)pkt);
+		kprintf("Udp in: error 2 \n");
+	restore(mask);
 		return;
 	}
 
@@ -190,7 +191,7 @@ void	udp_in (
 			send(udptr->udpid, OK);
 		}
 	}
-
+		kprintf("Udp in: no error \n");
 	restore(mask);
 }
 
@@ -212,6 +213,7 @@ int32	udp_recv (
 	int32	udplen;			/* Length of UDP data	*/
 
 	if((slot < 0) || (slot >= UDP_SLOTS)) {
+		kprintf("Udp_recv error 1\n");
 		return SYSERR;
 	}
 
@@ -220,6 +222,7 @@ int32	udp_recv (
 	udptr = &udptab[slot];
 
 	if(udptr->udstate != UDP_USED) {
+		kprintf("Udp_recvaddr error 2\n");
 		restore(mask);
 		return SYSERR;
 	}
@@ -232,11 +235,13 @@ int32	udp_recv (
 		msg = recvtime(timeout);
 		if((int32)msg == TIMEOUT) {
 			udptr->udstate = UDP_USED;
+		kprintf("Udp_recvaddr error 3\n");
 			restore(mask);
 			return TIMEOUT;
 		}
 		if((int32)msg != OK) {
 			udptr->udstate = UDP_USED;
+		kprintf("Udp_recvaddr error 4\n");
 			restore(mask);
 			return SYSERR;
 		}
@@ -291,6 +296,7 @@ int32	udp_recvaddr (
 	udptr = &udptab[slot];
 
 	if(udptr->udstate != UDP_USED) {
+		kprintf("Udp_recvaddr error 1\n");
 		restore(mask);
 		return SYSERR;
 	}
@@ -302,11 +308,13 @@ int32	udp_recvaddr (
 		msg = recvtime(timeout);
 		if((int32)msg == TIMEOUT) {
 			udptr->udstate = UDP_USED;
+		kprintf("Udp_recvaddr error 2\n");
 			restore(mask);
 			return TIMEOUT;
 		}
 		if((int32)msg != OK) {
 			udptr->udstate = UDP_USED;
+		kprintf("Udp_recvaddr error 2\n");
 			restore(mask);
 			return SYSERR;
 		}

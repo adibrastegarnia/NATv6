@@ -375,13 +375,19 @@ int32  nat_translatein(struct netpacket *pktptr){
 	/* look up table to see if entry exists*/
 	/* if entry exists, Translate, upadte checksum and then free the table entry */
 	int32 i;
+	kprintf("In nat transin\n");
 	struct nat_translatetbl * nattblptr;
 	for(i = 0; i < NAT_TBL_SIZE; i++){
 		nattblptr = &nattrans_tab[i];	
 		if(nattblptr->state == NAT_STATE_USED)	{
 			if( memcmp(nattblptr->nat_ipremote,pktptr->net_ip6src,16) == 0){ /*entry matches dest ip addr*/
+				kprintf("Nat in remip matches\n");
+kprintf("pkt->net_iface : %d",pktptr->net_iface);
+	kprintf("pkt->net_udpdport : %d",pktptr->net_udpdport);
+	kprintf("nattblptr->nat_packetidremote: %d\n",nattblptr->nat_packetidremote);
+
 				if(((pktptr->net_icmpidentifier == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_ICMP6))	/*Check id for icmp*/
-				||((pktptr->net_udpsport == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_UDP)))    /*Check id for UDP*/	
+				||((pktptr->net_udpdport == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_UDP)))    /*Check id for UDP*/	
 				{
 					/*Entry matches*/
 					//kprintf("Nat translatein - fount entry at %d\n", i);
@@ -401,7 +407,7 @@ int32  nat_translatein(struct netpacket *pktptr){
 							break;
 						case IP_UDP:
 							kprintf("UDP DETECTED in nat_translatein\n");
-							pktptr->net_udpsport = nattblptr->nat_packetidlocal;
+							pktptr->net_udpdport = nattblptr->nat_packetidlocal;
 							pktptr->net_udpcksm = 0x0000;
 							pktptr->net_udpcksm = htons(udp_cksum(pktptr));
 							break;

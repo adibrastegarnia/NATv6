@@ -108,7 +108,7 @@ resume(create(pollInputEof, 1024, 60, "Poller", 0, 0));
 		msglen = retval;
 	
 
-		retval = udp_sendto(slot, ipdata.ip6src, remport, buff, msglen);
+		retval = udp_sendto(slot, ipdata.ip6src, ipdata.port, buff, msglen);
 		if (retval == SYSERR) {
 			fprintf(stderr, "%s: udp_sendto failed\n",
 				args[0]);
