@@ -65,6 +65,7 @@ void nd_init(void)
  * -------------------------------------------------*/
 void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 {
+kprintf("ncq insert: \n");
 	struct nd_nbcentry *nbcptr;
 	nbcptr = &nbcache_tab[ncindex];
 	struct netpacket *pktnew;
@@ -91,6 +92,9 @@ void nd_ncq_insert(struct netpacket *pktptr, int32 ncindex)
 
 	}
 
+						kprintf("pkt->net_iface : %d",pktnew->net_iface);
+						kprintf("pkt->net_udpsport : %d",pktnew->net_udpsport);
+						kprintf("pkt->net_udpdport : %d\n",pktnew->net_udpdport );
 	return;
 
 }
@@ -549,17 +553,28 @@ void nd_in_nam(struct netpacket *pktptr)
 						TRUE, 1);
 
 					}
+					kprintf("In while loop \n");
 					/* sends any packets queued for the neighbor awaiting address resolution */
 					while(nbcptr->nc_pqhead < nbcptr->nc_pqtail && nbcptr->nc_pqcount >=1)	{
 						nbcptr->nc_pqcount--;
 						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
-						pktptrip6->net_icchksm = 0x0000;
-						//kprintf("Packet in queue should be sent:qsize%d\n", nbcptr->nc_pqcount);
-						//ip6addr_print(pktptrip6->net_ip6dst);
 						
+						if(pktptrip6 ->net_ip6nh == IP6_EXT_ICMP)	{
+							pktptrip6->net_icchksm = 0x0000;
+						}
+						else
+						{
+							pktptrip6->net_udpcksm = 0x0000;
+						}
+						kprintf("Packet in queue should be sent:qsize%d\n", nbcptr->nc_pqcount);
+						//ip6addr_print(pktptrip6->net_ip6dst);
+						kprintf("pkt->net_iface : %d",pktptrip6->net_iface);
+						kprintf("pkt->net_udpsport : %d",pktptrip6->net_udpsport);
+						kprintf("pkt->net_udpdport : %d\n",pktptrip6->net_udpdport );
 						ip6_send(pktptrip6);
 
 					}
+					kprintf("Out of while loop \n");
 					break;
 				default:
 					kprintf("DEFAULT STATE\n");

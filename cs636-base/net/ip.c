@@ -214,7 +214,7 @@ void ip6_in(struct netpacket *pktptr)
 
 
 	/* Process the extension headers */
-        //kprintf("Host in \n");
+        kprintf("Host in \n");
 
 	ip6_in_ext((struct netpacket *)pktptr);
 	restore(mask);
@@ -258,7 +258,7 @@ void ip6_in_ext(struct netpacket *pktptr)
 				icmp6_in(pktptr);
 				return;
 			case IP6_EXT_UDP:
-				//kprintf("UDP IN\n");
+				kprintf("UDP IN\n");
 				if (udp_cksum(pktptr) != 0){
 					kprintf("checksum is failed\n");
 					return;
@@ -551,6 +551,9 @@ status ip6_send(struct netpacket *pktptr)
 			pktptr->net_udpcksm = 0;
 			chksm = udp_cksum(pktptr);
 			pktptr->net_udpcksm = htons(chksm);
+kprintf("pkt->net_iface : %d",pktptr->net_iface);
+	kprintf("pkt->net_udpsport : %d",pktptr->net_udpsport);
+	kprintf("pkt->net_udpdport : %d\n",pktptr->net_udpdport );
 			break;
 
 	}

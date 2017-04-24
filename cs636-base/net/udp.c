@@ -116,12 +116,12 @@ void	udp_in (
 	int32	found = -1;		/* Empty slot in udptab	*/
 	int32	i;			/* For loop index	*/
 	udp_ntoh(pkt);
-	//kprintf("pkt->net_iface : %d",pkt->net_iface);
-	//kprintf("pkt->net_udpsport : %d",pkt->net_udpsport);
-	//kprintf("pkt->net_udpdport : %d\n",pkt->net_udpdport );
+	kprintf("pkt->net_iface : %d",pkt->net_iface);
+	kprintf("pkt->net_udpsport : %d",pkt->net_udpsport);
+	kprintf("pkt->net_udpdport : %d\n",pkt->net_udpdport );
 
-	//ip6addr_print_ping(pkt->net_ip6src);
-	//kprintf("\n");
+	ip6addr_print_ping(pkt->net_ip6src);
+	kprintf("\n");
 	
 	mask = disable();
 	tRecvudp = hpet->mcv_l;
@@ -396,7 +396,7 @@ int32	udp_send (
 
 	memcpy(pkt->net_ip6dst, udptr->udremip, 16);
 
-	//kprintf("UDP send: loc port:destport %d:%d\n", udptr->udlocport, udptr->udremport);
+	kprintf("UDP send: loc port:destport %d:%d\n", udptr->udlocport, udptr->udremport);
 
 	pkt->net_udpsport = udptr->udlocport;
 	pkt->net_udpdport = udptr->udremport;
