@@ -12,13 +12,13 @@ struct icmpdata {
 };
 
 
-byte	buf[56];			/* buffer of chars		*/
-char eofReceived = 0;			/* Flag for EOF */
+static byte	buf[56];			/* buffer of chars		*/
+static char eofReceived = 0;			/* Flag for EOF */
 
 uint32 tSent = 0;
 uint32 tRecv = 0;
 
-void sender(byte* ipaddr, int32 interface)	{
+static void sender(byte* ipaddr, int32 interface)	{
 	intmask mask;
 	mask = disable();
 	tSent = hpet->mcv_l;
@@ -27,7 +27,7 @@ void sender(byte* ipaddr, int32 interface)	{
 	//ip6addr_print(ipaddr);
 }
 
-void pollInputEof()	{
+static void pollInputEof()	{
 	char nextch;
 	nextch = getc(stdin);
 	while (nextch != EOF) {
@@ -116,9 +116,9 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	buf[3] = 0;
 
 	kprintf("\n\n PING ");
-	ip6addr_print(ipaddr);
- 	kprintf("\n from ");
-	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
+	ip6addr_print_ping(ipaddr);
+ 	kprintf(" from ");
+	ip6addr_print_ping(ifptr->if_ip6ucast[0].ip6addr);
  	kprintf(" on interface %s with", ifptr->if_name);
  	kprintf(" 56 data bytes\n\n");
 	resume(create(pollInputEof, 1024, 60, "Poller", 0, 0));
@@ -127,7 +127,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
 		//Update seq no
 		buf[0] = ++seq;
 
-		resume(create(sender, 1024, 60, "Sender", 2, ipaddr, iface));
+		resume(create(sender, 4096, 60, "Sender", 2, ipaddr, iface));
 		pSent++;
 		// Receive and print packet data
 		//kprintf("Pinging ..");
@@ -145,10 +145,10 @@ shellcmd xsh_ping6(int nargs, char *args[])
 				pRecv++;		
 				kprintf("%d bytes from ", 56);	
 				ip6addr_print_ping(ipaddr);
-				kprintf(": rtt = %.6fus with seq %2d\n", ((tRecv - tSent)/14.318), seq);
+				kprintf(": rtt = %.6fms with seq %2d\n", ((tRecv - tSent)/14318.0), seq);
 			}
 			else{
-				kprintf("Received seq = %d,  sent seq = %d", icmppkt->net_icmpidentifier, seq);
+				//kprintf("Received seq = %d,  sent seq = %d", icmppkt->net_icmpidentifier, seq);
 			}
 
 		}
@@ -160,9 +160,9 @@ shellcmd xsh_ping6(int nargs, char *args[])
 	eofReceived = 0;
 	icmp6_release(slot);
 	// Ping statistics
-	kprintf("--- ");ip6addr_print(ipaddr); kprintf("  ping statistics ---\n");
-	kprintf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", pSent,pRecv,(((pSent-pRecv)*100)/pSent),0);
-	kprintf("rtt min/avg/max/mdev = %f/%f/%f/%f ms\n\n", 0,0,0,0);
+	kprintf("--- ");ip6addr_print_ping(ipaddr); kprintf("  ping statistics ---\n");
+	kprintf("%d packets transmitted, %d received, %d%% packet loss\n", pSent,pRecv,(((pSent-pRecv)*100)/pSent));
+	//kprintf("rtt min/avg/max/mdev = %f/%f/%f/%f ms\n\n", 0,0,0,0);
 
 
 	return 0;

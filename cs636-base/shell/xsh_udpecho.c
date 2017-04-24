@@ -4,6 +4,32 @@
 #include <stdio.h>
 #include <string.h>
 
+static byte	buf[56];			/* buffer of chars		*/
+static char eofReceived = 0;			/* Flag for EOF */
+
+static uint32 tSentudp = 0;
+uint32 tRecvudp = 0;
+
+static void sender(int32 slot, char* msg, int32 msglen)	{
+	intmask mask;
+	mask = disable();
+	tSentudp = hpet->mcv_l;
+	restore(mask);
+	udp_send(slot, msg, msglen);
+	//ip6addr_print(ipaddr);
+}
+
+
+static void pollInputEof()	{
+	char nextch;
+	nextch = getc(stdin);
+	while (nextch != EOF) {
+		putc(stdout, nextch);
+		nextch = getc(stdin);
+	}
+	eofReceived = 1;
+}
+
 /*------------------------------------------------------------------------
  * xsh_udpecho - shell command that can send a message to a remote UDP
  *			echo server and receive a reply
@@ -12,7 +38,7 @@
 shellcmd xsh_udpecho(int nargs, char *args[])
 {
 
-	int	i;			/* index into buffer		*/
+	int	i=0;			/* index into buffer		*/
 	int	retval;			/* return value			*/
 	char	msg[] = "Xinu"; /* message to send	*/
 	char	inbuf[1500];		/* buffer for incoming reply	*/
@@ -23,7 +49,10 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 	uint16	echoport= 7;		/* port number for UDP echo	*/
 	uint16	locport	= 52743;	/* local port to use		*/
 	int32	retries	= 20;		/* number of retries		*/
-	int32	delay	= 2000;		/* reception delay in ms	*/
+	int32	delay	= 1000;		/* reception delay in ms	*/
+	int32 pSent = 0, pRecv = 0;
+
+
 
 	int32 iface = 0;                  /* Interface number */
 	/* For argument '--help', emit help about the 'udpecho' command	*/
@@ -51,21 +80,17 @@ shellcmd xsh_udpecho(int nargs, char *args[])
      {
 	if(args[2][0] == '0')
 	{
-		kprintf("iface: 0\n");
 		iface = 0;
 
 	}
 	else if(args[2][0] == '1')
 	{
-		kprintf("iface: 1\n");
 		iface = 1;
 
 	}
 	else if(args[2][0] == '2') 
 	{
-		kprintf("iface: 2\n");
 		iface = 2;
-
 	}
 
      }
@@ -82,7 +107,6 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 	/* register local UDP port */
 
 
-	kprintf("Interface ID %d\n", iface);
 	slot = udp_register(iface, remoteip, echoport, locport);
 	if (slot == SYSERR) {
 		fprintf(stderr, "%s: could not reserve UDP port %d\n",
@@ -91,17 +115,18 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 	}
 
 	/* Retry sending outgoing datagram and getting response */
-
+	resume(create(pollInputEof, 1024, 60, "Poller", 0, 0));
 	msglen = strnlen(msg, 1200);
-	for (i=0; i<retries; i++) {
-		retval = udp_send(slot, msg, msglen);
+	while(eofReceived == 0)	{
+
+		retval = resume(create(sender, 4096, 60, "Sender", 3, slot, msg, msglen));
 		if (retval == SYSERR) {
 			fprintf(stderr, "%s: error sending UDP \n",
 				args[0]);
 			return 1;
 		}
 		//kprintf("UDP sent\n");
-
+		pSent++;
 		retval = udp_recv(slot, inbuf, sizeof(inbuf), delay);
 		if (retval == TIMEOUT) {
 			fprintf(stderr, "%s: timeout...\n", args[0]);
@@ -113,11 +138,13 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 			return 1;
 		}
 		//break;
-		kprintf("UDP OK\n");
+		pRecv++;
+		
+		kprintf("UDP Datagram %d received with rtt = %.6fms \n", pRecv, ((tRecvudp - tSentudp )/14318.0));		
 		sleepms(1000);
 	}
-
-	//udp_release(slot);
+	eofReceived = 0;
+	udp_release(slot);
 	if (retval == TIMEOUT) {
 		fprintf(stderr, "%s: retry limit exceeded\n",
 			args[0]);
@@ -126,21 +153,10 @@ shellcmd xsh_udpecho(int nargs, char *args[])
 
 	/* Response received - check contents */
 
-	/*if (retval != msglen) {
-		fprintf(stderr, "%s: sent %d bytes and received %d\n",
-			args[0], msglen, retval);
-		return 1;
-	}
-	for (i = 0; i < msglen; i++) {
-		if (msg[i] != inbuf[i]) {
-			fprintf(stderr, "%s: reply differs at byte %d\n",
-				args[0], i);
-			return 1;
-		}
-	}*/
 
-	udp_release(slot);
-	printf("UDP echo test was successful\n");
+kprintf("--- UDP ping statistics ---\n");
+	kprintf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", pSent,pRecv,(((pSent-pRecv)*100)/pSent),0);
+
 
 	return 0;
 }

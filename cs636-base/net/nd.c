@@ -317,7 +317,7 @@ void nd_in_nsm(struct netpacket *pktptr)
 
 	if(i >= ifptr->if_nipucast)
 	{
-		kprintf("Error\n");
+		//kprintf("Error\n");
 		restore(mask);
 		return;
 
@@ -457,7 +457,7 @@ status nd_ns_send(int32 ncindex)
 
 	}
 	//kprintf("Sending NSM on iface %d with addr",nbcptr->nc_iface );
-	ip6addr_print_ping(ipdst);
+	//ip6addr_print_ping(ipdst);
 	kprintf("\n");
         icmp6_send(ipdst, ICMP6_NSM_TYPE, 
 			0 , nbsptr,
@@ -554,8 +554,8 @@ void nd_in_nam(struct netpacket *pktptr)
 						nbcptr->nc_pqcount--;
 						pktptrip6 = nbcptr->nc_pktq[nbcptr->nc_pqhead++];
 						pktptrip6->net_icchksm = 0x0000;
-						kprintf("Packet in queue should be sent:qsize%d\n", nbcptr->nc_pqcount);
-						ip6addr_print(pktptrip6->net_ip6dst);
+						//kprintf("Packet in queue should be sent:qsize%d\n", nbcptr->nc_pqcount);
+						//ip6addr_print(pktptrip6->net_ip6dst);
 						
 						ip6_send(pktptrip6);
 
@@ -854,25 +854,25 @@ void nd_in(struct netpacket *pktptr)
 	{
 		/* Handling Neighbour Soliciation Packet */
 		case ICMP6_NSM_TYPE:
-			kprintf("Neighbor Solicitation Message\n");
+			//kprintf("Neighbor Solicitation Message\n");
 			nd_in_nsm(pktptr);
 			break;
 		/* Handling Neighbour Advertisment Packet */
 		case ICMP6_NAM_TYPE:
-			kprintf("Neighbor Advertisement Message\n");
+			//kprintf("Neighbor Advertisement Message\n");
 			nd_in_nam(pktptr);
 			break;
 	
 
 		case ICMP6_RAM_TYPE:
-			kprintf("Router Advertisemet\n");
+			//kprintf("Router Advertisemet\n");
 			nd_ram_in(pktptr);
 			break;
 		case ICMP6_RDM_TYPE:
 			break;
 		case ICMP6_RSM_TYPE:
 			if(!host){
-				kprintf("Router Solicitation Message\n");
+				//kprintf("Router Solicitation Message\n");
 				nd_rsm_in(pktptr);
 			}
 			break;

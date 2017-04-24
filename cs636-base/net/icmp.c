@@ -51,7 +51,7 @@ void icmp6_in(struct netpacket *pktptr)
 		
 		/* ICMP Echo request */
 		case ICMP6_ECHREQ_TYPE:
-			//kprintf("ICMP Echo request\n");
+			kprintf("ICMP Echo request received\n");
 			icmp6_send(pktptr->net_ip6src, 
 					ICMP6_ECHRES_TYPE, 0,
 					pktptr->net_icdata,
@@ -93,12 +93,12 @@ void icmp6_in(struct netpacket *pktptr)
 			break;
 		/* ICMP Router Advertisement Message */
 		case ICMP6_RAM_TYPE:
-			kprintf("ICMP6 Router Advertisemet message\n");
+			//kprintf("ICMP6 Router Advertisemet message\n");
 			nd_in(pktptr);
 			break;
 		/* ICMP Router Solicitation Message */
 		case ICMP6_RSM_TYPE:
-			kprintf("ICMP6 Router solicitation message\n");
+			//kprintf("ICMP6 Router solicitation message\n");
 			nd_in(pktptr);
 			break;
 

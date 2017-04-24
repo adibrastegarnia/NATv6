@@ -221,7 +221,7 @@ void	net_init (void)
 
 	ip6_nwmcast_gen(0, ifptr);
 	ip6_nwmcast_gen(1, ifptr);
-
+kprintf("\n");
 	ip6addr_print(ifptr->if_ip6ucast[0].ip6addr);
 
 	ip6ula_gen(0, ifptr);

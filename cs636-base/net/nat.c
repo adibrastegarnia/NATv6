@@ -83,7 +83,7 @@ void nat_in(struct netpacket *pktptr)
 	/* Check the interface is valid or not */
 	if(pktptr->net_iface < 0 || pktptr->net_iface > NIFACES)
 	{
-		kprintf("Invalid interface number %d\n", pktptr->net_iface);
+		//kprintf("Invalid interface number %d\n", pktptr->net_iface);
 		freebuf((char *)pktptr);
 		restore(mask);
 		return;
@@ -91,9 +91,9 @@ void nat_in(struct netpacket *pktptr)
 	}
 
 
-	kprintf("nat in with dest addr ");
-	ip6addr_print_ping(pktptr->net_ip6dst);
-	kprintf(" from interface %d\n", pktptr->net_iface);
+	//kprintf("nat in with dest addr ");
+	//ip6addr_print_ping(pktptr->net_ip6dst);
+	//kprintf(" from interface %d\n", pktptr->net_iface);
 	ifptr = &if_tab[pktptr->net_iface];
 
 	/* Match IPv6 destination address with our unicast, multicast address, or ULA */
@@ -104,7 +104,7 @@ void nat_in(struct netpacket *pktptr)
 				/* Compare our IPv6 unicast address with packet destination address */
 				if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[i].ip6addr, 16))
 				{
-					kprintf("NAT ucast ip matches destip\n");
+					//kprintf("NAT ucast ip matches destip\n");
 					
 					//Check if this was from h0 to h1 or h2, since destip=natip
 					if(pktptr->net_iface == 0){
@@ -130,7 +130,7 @@ void nat_in(struct netpacket *pktptr)
 			/* Compare our IPv6 Multicast address with packet destionation address */
 			if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6mcast[i].ip6addr, 16))
 			{
-				kprintf("NAT mcast ip matches destip\n");
+				//kprintf("NAT mcast ip matches destip\n");
 				ip6_in_ext((struct netpacket *)pktptr);
 				restore(mask);	
 				return;
@@ -139,7 +139,7 @@ void nat_in(struct netpacket *pktptr)
 
 		}
 			/* For multicast, if destip is not NAT ip, we discard the packet.*/
-			kprintf("MCast Packet dropped\n");
+			//kprintf("MCast Packet dropped\n");
 			restore(mask);
 			return;
 	}
@@ -147,9 +147,9 @@ void nat_in(struct netpacket *pktptr)
 
 	/* The packet was not for the NAT box. So it must be forwarded. */
 	
-	kprintf("Forwarding packet to ");
-	ip6addr_print_ping(pktptr->net_ip6dst);
-	kprintf("\n");
+	//kprintf("Forwarding packet to ");
+	//ip6addr_print_ping(pktptr->net_ip6dst);
+	//kprintf("\n");
 	struct nd_routertbl *rtblptr;
 
 	byte ipdst[16];
@@ -162,7 +162,7 @@ void nat_in(struct netpacket *pktptr)
 
 	uint32 iplen;
 
-	kprintf("ICMP identifier, seq = %d, %d\n", pktptr->net_icmpidentifier, pktptr->net_icmpseqno);
+	//kprintf("ICMP identifier, seq = %d, %d\n", pktptr->net_icmpidentifier, pktptr->net_icmpseqno);
 	
 
 /*******************************************************/
@@ -176,7 +176,7 @@ void nat_in(struct netpacket *pktptr)
 			if(!memcmp(pktptr->net_ip6dst, ifptr->if_ip6ucast[1].ip6addr, 2))
 			{
 				/*we found dest iface */
-				kprintf("FWDING TO DEST IP!! \n");
+				//kprintf("FWDING TO DEST IP!! \n");
 				/* NAT box's i interface has the same prefix as the dest ip */
 				pktptr->net_iface = i;
 
@@ -186,15 +186,10 @@ void nat_in(struct netpacket *pktptr)
 					}
 				}
 
-
-				/*Update checksum*/
-				switch(pktptr->net_ip6nh)
-				{
-					case IP_ICMP6:
-					//pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
-					break;
-				}
-
+				kprintf("After translate: type %d srcport %d destport %d srcip destip\n", pktptr->net_ip6nh, pktptr->net_udpsport, pktptr->net_udpdport);
+				ip6addr_print(pktptr->net_ip6src);
+				ip6addr_print(pktptr->net_ip6dst);
+				
 				retval = ip6_send(pktptr);
 
 				restore(mask);
@@ -206,9 +201,9 @@ void nat_in(struct netpacket *pktptr)
 /*********************************************************/
 
 
-	kprintf("Checking routing table in NAT_in for"); 
-	ip6addr_print_ping(pktptr->net_ip6dst);
-	kprintf("\n");
+	//kprintf("Checking routing table in NAT_in for"); 
+	//ip6addr_print_ping(pktptr->net_ip6dst);
+	//kprintf("\n");
 
 
 	for(i=0; i < ND_ROUTETAB_SIZE; i++)
@@ -225,10 +220,10 @@ void nat_in(struct netpacket *pktptr)
 		if((memcmp((const void *)ipdst, (const void *)ipprefix, preflen) == 0) && rtblptr->state == RT_STATE_USED)
 		{
 			
-			kprintf("Fwd: Prefix matches i: %d, addr", i);
-			ip6addr_print_ping(ipdst);
+			//kprintf("Fwd: Prefix matches i: %d, addr", i);
+			//ip6addr_print_ping(ipdst);
 			pktptr->net_iface = rtblptr->iface;
-			kprintf(" on interface %d ", pktptr->net_iface );
+			//kprintf(" on interface %d ", pktptr->net_iface );
 			//kprintf("ip packet is sent from nat in\n");
 
 			int32 retval = nd_ncfindip(ipdst);
@@ -252,7 +247,7 @@ void nat_in(struct netpacket *pktptr)
 			}
 			else
 			{
-				kprintf("Send the packet from nat in\n");
+				//kprintf("Send the packet from nat in\n");
 				nbcptr = &nbcache_tab[retval];
 				ifptr = &if_tab[pktptr->net_iface];
 				memcpy(pktptr->net_src, ifptr->if_macucast, ETH_ADDR_LEN);
@@ -316,7 +311,7 @@ int32  nat_translateout(struct netpacket *pktptr){
 		}
 	}
 	
-	kprintf("Nat Translateout - need to translate");
+	//kprintf("Nat Translateout - need to translate");
 
 	ifptr = &if_tab[0]; /* interface 0 is the outgoing interface */
 	/*Find free entry and add to table, then translate */
@@ -330,7 +325,7 @@ int32  nat_translateout(struct netpacket *pktptr){
 			nattblptr->nat_iflocal = pktptr->net_iface;
 			nattblptr->nat_packetidremote = nat_out_packetid++;
 			nattblptr->state = NAT_STATE_USED;		
-			kprintf("NAT entry added at %d\n", i);
+			//kprintf("NAT entry added at %d\n", i);
 
 			/*Translate by replacing src ip, id/port, interface, checksum*/
 			pktptr->net_iface = 0; /* TODO: is this always the case?*/
@@ -339,22 +334,25 @@ int32  nat_translateout(struct netpacket *pktptr){
 			
 			/* update identifier and recalculate checksum*/
 			/* TODO: Should we recalculate full checksum?- can we modify the current one slightly*/
-			pktptr->net_icchksm = 0x0000; 
+
 			switch(pktptr->net_ip6nh)
 			{
 				/* Handling ICMPv6 Packets */
 				case IP_ICMP6:
 					nattblptr->nat_packetidlocal = pktptr->net_icmpidentifier;
 					pktptr->net_icmpidentifier = nattblptr->nat_packetidremote; /* replacement packet id*/
+					pktptr->net_icchksm = 0x0000; 
 					pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
 					break;
 				case IP_UDP:
 					kprintf("UDP DETECTED in nat_translateout\n");
 					nattblptr->nat_packetidlocal = pktptr->net_udpsport;
-					/* TODO: update checksum for UDP*/
+					pktptr->net_udpsport = nattblptr->nat_packetidremote; 
+					pktptr->net_udpcksm = 0x0000;
+					pktptr->net_udpcksm = htons(udp_cksum(pktptr));
 					break;
 				default:
-					kprintf("Unknown type DETECTED in nat_translateout\n");
+					//kprintf("Unknown type DETECTED in nat_translateout\n");
 					break;
 			}
 			return OK;
@@ -362,7 +360,7 @@ int32  nat_translateout(struct netpacket *pktptr){
 	}
 
 	/*We did not get free entry*/
-	kprintf("Could not translate: table full");
+	//kprintf("Could not translate: table full");
 	/*TODO: Handle this by replacing LRU entry*/
 
 	return OK;
@@ -382,29 +380,33 @@ int32  nat_translatein(struct netpacket *pktptr){
 		nattblptr = &nattrans_tab[i];	
 		if(nattblptr->state == NAT_STATE_USED)	{
 			if( memcmp(nattblptr->nat_ipremote,pktptr->net_ip6src,16) == 0){ /*entry matches dest ip addr*/
-				if((pktptr->net_icmpidentifier == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_ICMP6))	{/*Check id for icmp*/
+				if(((pktptr->net_icmpidentifier == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_ICMP6))	/*Check id for icmp*/
+				||((pktptr->net_udpsport == nattblptr->nat_packetidremote) && (pktptr->net_ip6nh == IP_UDP)))    /*Check id for UDP*/	
+				{
 					/*Entry matches*/
-					kprintf("Nat translatein - fount entry at %d\n", i);
+					//kprintf("Nat translatein - fount entry at %d\n", i);
 					
 					/*Translate back dest ip, id/port, iface, checksum*/
 					memcpy(pktptr->net_ip6dst, nattblptr->nat_iplocal, 16); /*replace dest ip with local*/
 					pktptr->net_iface = nattblptr->nat_iflocal; /* replace interface */
 					
 					/* Update id and checksum */
-					pktptr->net_icchksm = 0x0000; 
+
 					switch(pktptr->net_ip6nh)	{
 						/* Handling ICMPv6 Packets */
 						case IP_ICMP6:
 							pktptr->net_icmpidentifier = nattblptr->nat_packetidlocal; /* replacement packet id*/
+							pktptr->net_icchksm = 0x0000; 
 							pktptr->net_icchksm = htons(icmp6_chksum(pktptr));
 							break;
 						case IP_UDP:
 							kprintf("UDP DETECTED in nat_translatein\n");
 							pktptr->net_udpsport = nattblptr->nat_packetidlocal;
-							/* TODO: update checksum for UDP*/
+							pktptr->net_udpcksm = 0x0000;
+							pktptr->net_udpcksm = htons(udp_cksum(pktptr));
 							break;
 						default:
-							kprintf("Unknown type DETECTED in nat_translatein\n");
+							//kprintf("Unknown type DETECTED in nat_translatein\n");
 							break;
 					}
 					nattblptr->state = NAT_STATE_FREE; /* Free the entry after first receive packet*/

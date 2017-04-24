@@ -3,7 +3,7 @@
 #include <xinu.h>
 
 struct	udpentry udptab[UDP_SLOTS];
-
+extern uint32 tRecvudp;
 /*------------------------------------------------------------------------
  * udp_init  -  Initialize the UDP table
  *------------------------------------------------------------------------
@@ -42,13 +42,13 @@ int32	udp_register (
 	int32	found = -1;		/* Empty slot in UDP table	*/
 	int32	i;
 
-	kprintf("iface %d\n", iface);
+	//kprintf("iface %d\n", iface);
 	if((iface < 0) || (iface >= NIFACES)) {
-		kprintf("step 0\n");
+		//kprintf("step 0\n");
 		return SYSERR;
 	}
 
-	kprintf("step 1\n");
+	//kprintf("step 1\n");
 	mask = disable();
 
 	for(i = 0; i < UDP_SLOTS; i++) {
@@ -57,7 +57,7 @@ int32	udp_register (
 
 		if(udptr->udstate == UDP_FREE) {
 			found = found == -1 ? i : found;
-			kprintf("found %d\n", found);
+			//kprintf("found %d\n", found);
 			continue;
 		}
 
@@ -68,7 +68,7 @@ int32	udp_register (
 			if(isipunspec(udptr->udremip)) {
 				if(isipunspec(remip)) {
 					restore(mask);
-					kprintf("step 2\n");
+					//kprintf("step 2\n");
 					return SYSERR;
 				}
 				continue;
@@ -76,7 +76,7 @@ int32	udp_register (
 
 			if(!memcmp(udptr->udremip, remip, 16)) {
 				restore(mask);
-				kprintf("step 3\n");
+				//kprintf("step 3\n");
 				return SYSERR;
 			}
 			continue;
@@ -85,7 +85,7 @@ int32	udp_register (
 
 	if(found == -1) {
 		restore(mask);
-		kprintf("step 4\n");
+		//kprintf("step 4\n");
 		return SYSERR;
 	}
 
@@ -121,10 +121,10 @@ void	udp_in (
 	//kprintf("pkt->net_udpdport : %d\n",pkt->net_udpdport );
 
 	//ip6addr_print_ping(pkt->net_ip6src);
-	kprintf("\n");
+	//kprintf("\n");
 	
 	mask = disable();
-
+	tRecvudp = hpet->mcv_l;
 	for(i = 0; i < UDP_SLOTS; i++) {
 
 		udptr = &udptab[i];
@@ -405,7 +405,7 @@ int32	udp_send (
 
 	memcpy(pkt->net_udpdata, buf, len);
 
-	kprintf("udp_send: sending\n");
+	//kprintf("udp_send: sending\n");
 	//ip6addr_print_ping(pkt->net_ip6src);
 	ip6_send(pkt);
 
@@ -473,7 +473,7 @@ int32	udp_sendto (
 
 	memcpy(pkt->net_udpdata, buf, len);
 
-	kprintf("udp_sendto: sending\n");
+	//kprintf("udp_sendto: sending\n");
 	ip6_send(pkt);
 
 	restore(mask);

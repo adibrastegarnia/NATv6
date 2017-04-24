@@ -250,7 +250,7 @@ void ip6_in_ext(struct netpacket *pktptr)
 		switch(nh_value)
 		{
 			case IP6_EXT_HBH:
-				kprintf("Hop by Hop header\n");
+				//kprintf("Hop by Hop header\n");
 				return;
 
 			case IP6_EXT_ICMP:
@@ -513,7 +513,7 @@ status ip6_route(struct netpacket *pktptr, byte nxthop[16])
 status ip6_send(struct netpacket *pktptr)
 {
 
-	//kprintf("Send IP message to \n");
+	kprintf("Send IP message to \n");
 
 	intmask mask;
 	mask = disable();
@@ -532,8 +532,8 @@ status ip6_send(struct netpacket *pktptr)
 	
 
 	/* Next Hop determination */
-	//kprintf("Dest in IPsend:");
-	//ip6addr_print(pktptr->net_ip6dst);
+	kprintf("Dest in IPsend:");
+	ip6addr_print(pktptr->net_ip6dst);
 
 
 	switch(pktptr->net_ip6nh)
